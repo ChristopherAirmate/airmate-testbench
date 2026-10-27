@@ -224,10 +224,11 @@ const REDIRECT = location.origin + location.pathname;
 function saveCfg() { LS.set("am_cfg", CFG); }
 
 /* ================= Auth (OAuth2 Auth-Code + PKCE, ohne Bibliothek) ================= */
-const SCOPES = "openid profile offline_access User.Read Files.ReadWrite";
+const SCOPES = "openid profile offline_access User.Read Files.ReadWrite.All";
 const authBase = () => `https://login.microsoftonline.com/${encodeURIComponent(CFG.tenant || "organizations")}/oauth2/v2.0`;
 const b64url = a => btoa(String.fromCharCode(...a)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 let TOK = LS.get("am_tok", null);
+if (TOK && TOK.scope !== SCOPES) { TOK = null; LS.del("am_tok"); LS.del("am_base"); }
 async function login() {
   if (!CFG.clientId) { toast("Bitte zuerst unter „Einrichtung“ die Client-ID eintragen."); document.querySelector("#loginBox details").open = true; return; }
   await persistQueue();
@@ -244,7 +245,7 @@ async function tokenRequest(params) {
     body: new URLSearchParams(Object.assign({ client_id: CFG.clientId, scope: SCOPES }, params)) });
   const j = await r.json();
   if (!r.ok) throw new Error(j.error_description || j.error || ("HTTP " + r.status));
-  TOK = { at: j.access_token, rt: j.refresh_token || (TOK && TOK.rt), exp: Date.now() + (j.expires_in - 120) * 1000 };
+  TOK = { at: j.access_token, rt: j.refresh_token || (TOK && TOK.rt), exp: Date.now() + (j.expires_in - 120) * 1000, scope: SCOPES };
   LS.set("am_tok", TOK);
   return TOK.at;
 }
@@ -287,7 +288,12 @@ async function resolveBase() {
   drive = it.parentReference ? it.parentReference.driveId : null; id = it.id;
   if (!drive) { const d = await gfetch("/me/drive"); drive = d.id; }
   for (const s of segs) {
-    it = await gfetch(`/drives/${drive}/items/${id}:/${encodeURIComponent(s)}`);
+    try { it = await gfetch(`/drives/${drive}/items/${id}:/${encodeURIComponent(s)}`); }
+    catch (e) {
+      if (e.status === 403) throw new Error(`Kein Zugriff auf „${s}“ (403). In Entra unter API-Berechtigungen „Files.ReadWrite.All“ hinzufügen, Administratorzustimmung erteilen und hier neu anmelden.`);
+      if (e.status === 404) throw new Error(`Ordner „${s}“ nicht gefunden – Pfad unter Einrichtung prüfen.`);
+      throw e;
+    }
     if (it.remoteItem) { drive = it.remoteItem.parentReference.driveId; id = it.remoteItem.id; }
     else { drive = it.parentReference.driveId; id = it.id; }
   }
@@ -832,7 +838,7 @@ async function loadSessions() {
     if (e.auth) { $("sessBox").classList.add("hidden"); $("loginState").textContent = "Anmeldung abgelaufen – bitte neu anmelden."; }
   }
 }
-$("bLogin").onclick = login;
+$("bLogin").onclick = () => { TOK = null; LS.del("am_tok"); BASE = null; LS.del("am_base"); login(); };
 $("bSaveCfg").onclick = () => { CFG.clientId = $("cfgClient").value.trim(); CFG.tenant = $("cfgTenant").value.trim() || "organizations"; CFG.path = $("cfgPath").value.trim().replace(/^\/+|\/+$/g, "").replace(/\\/g, "/"); BASE = null; LS.del("am_base"); saveCfg(); toast("Gespeichert."); showWelcome(); };
 $("bNew").onclick = async () => {
   const meta = { sn_quelle: NEW_QR_RAW ? "QR-Code" : "manuell", qr_raw: NEW_QR_RAW, sn: $("nSn").value.trim(), tester: $("nTester").value.trim(), firma: $("nFirma").value.trim(), ort: $("nOrt").value.trim(), temp: $("nTemp").value.trim(), ladegeraet: $("nLade").value.trim(), fw_uc1: $("nFw1").value.trim(), fw_uc2: $("nFw2").value.trim(), bl_uc1: $("nBl").value.trim() };
