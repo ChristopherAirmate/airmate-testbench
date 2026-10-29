@@ -103,6 +103,18 @@ a{color:#1e6fd9}
 .camlist button{display:block;width:100%;text-align:left;margin:6px 0}
 .camlist button.on{border:2px solid var(--acc);font-weight:700}
 input[type=range]{padding:0;accent-color:#1e6fd9}
+.probe{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.probe button{padding:6px;text-align:left;font-size:12px}
+.probe img{width:100%;border-radius:8px;display:block;margin-bottom:4px;background:#10141b}
+.probe button.on{border:3px solid var(--acc)}
+#tmrTxt{position:absolute;left:10px;top:44px;background:#000a;color:#fff;font-weight:700;font-size:14px;padding:4px 10px;border-radius:999px;white-space:nowrap}
+#tmrTxt.over{background:#d92d3a}
+#demoBar{background:#fff1d6;color:#8a5200;border-bottom:1px solid #f3c66b;text-align:center;font-weight:800;font-size:13px;padding:5px}
+#finBox{position:absolute;right:10px;top:50px;background:#000b;color:#fff;font-size:12px;padding:4px 8px;border-radius:8px}
+.kp{font-size:13px}
+.kp table{width:100%;border-collapse:collapse;margin:6px 0}
+.kp td,.kp th{border:1px solid #dde3ea;padding:4px 6px;text-align:left;vertical-align:top}
+.kp th{background:#eef3fa}
 </style>
 </head>
 <body>
@@ -138,11 +150,14 @@ input[type=range]{padding:0;accent-color:#1e6fd9}
       <div class="card"><div class="ct">SITZUNG FORTSETZEN</div><div id="sessList" class="muted">Lade …</div></div>
     </div>
     <div id="pendingBox" class="card hidden"></div>
+    <div class="card"><div class="ct">TESTMODUS</div><div class="muted">Zum Ausprobieren und Üben – Kamera, Zeitmarken und Abläufe funktionieren, aber es wird nichts gespeichert oder hochgeladen. Keine Anmeldung nötig.</div>
+      <button id="bDemo" style="width:100%;margin-top:10px;background:#fff1d6;border-color:#f3c66b;color:#8a5200;font-weight:800">🧪 Testmodus starten</button></div>
     <p class="muted" style="text-align:center">Protokoll UC1 V02R09 · gleiche Sitzungsdaten wie die PC-App</p>
   </section>
 
   <!-- ====== Test-Ansicht ====== -->
   <section id="vTest" class="hidden" style="display:flex;flex-direction:column;height:100%">
+    <div id="demoBar" class="hidden">🧪 TESTMODUS – nichts wird gespeichert oder hochgeladen</div>
     <header>
       <button class="iconbtn" id="bList" aria-label="Testliste">☰</button>
       <div><div class="id" id="hId">A-01</div><div class="ch" id="hCh"></div></div>
@@ -158,6 +173,8 @@ input[type=range]{padding:0;accent-color:#1e6fd9}
       <div id="recdot" class="hidden">● REC</div>
       <div id="sw">00:00.00</div>
       <div id="timerbar"><div></div></div>
+      <div id="tmrTxt" class="hidden"></div>
+      <div id="finBox" class="hidden"></div>
       <div id="flash"></div>
     </div>
     <div id="camBar">
@@ -167,6 +184,7 @@ input[type=range]{padding:0;accent-color:#1e6fd9}
       <span class="sep"></span>
       <span id="zoomChips" style="display:flex;gap:6px"></span>
       <span class="sep"></span>
+      <button id="bTL" title="Zeitraffer für lange Aufnahmen">⏩ Zeitraffer aus</button>
       <button id="bCamSheet">⚙ Kamera</button>
     </div>
     <main id="main">
@@ -200,6 +218,7 @@ input[type=range]{padding:0;accent-color:#1e6fd9}
   <h2>Menü</h2>
   <div id="menuInfo" class="muted" style="margin-bottom:10px"></div>
   <button class="sess" id="mQr">🔍 Gerät prüfen (QR-Code scannen)</button>
+  <button class="sess" id="mKP">📝 Kurzprotokoll anzeigen / speichern</button>
   <button class="sess" id="mRef">📖 Referenz: LED-Anzeigen & Sollabläufe</button>
   <button class="sess" id="mErr">🐞 Fehlerberichte</button>
   <button class="sess" id="mFree">★ Freier Modus (eigene Aufnahmen &amp; Fotos)</button>
@@ -212,12 +231,21 @@ input[type=range]{padding:0;accent-color:#1e6fd9}
 <div id="sCam" class="sheet hidden"><div><h2>Kamera</h2>
   <div class="ct">KAMERA WÄHLEN (Weitwinkel / Tele / Front)</div>
   <div id="camList" class="camlist muted">Lade …</div>
+  <button id="cProbe" style="width:100%;margin-top:6px;background:#1e6fd9;border-color:#1e6fd9;color:#fff;font-weight:700">🔍 Alle Kameras mit Vorschaubild testen</button>
+  <div id="probeOut" class="probe"></div>
+  <div id="camHint" class="muted" style="margin-top:6px"></div>
   <div class="ct" style="margin-top:12px">ZOOM <span id="zoomVal"></span></div>
   <input type="range" id="zoomRange" min="1" max="5" step="0.1" value="1" style="width:100%">
   <div id="zoomInfo" class="muted"></div>
   <div class="row" style="margin-top:12px"><button id="cTorch">🔦 Dauerlicht</button><button id="cFlash">⚡ Foto-Blitz</button></div>
+  <div class="ct" style="margin-top:12px">ZEITRAFFER (für lange Aufnahmen)</div>
+  <select id="cTL"><option value="0">aus – normales Video mit Ton</option><option value="1">1 Bild pro Sekunde (1 h → 2 min Video)</option><option value="2">1 Bild alle 2 s (1 h → 60 s)</option><option value="5">1 Bild alle 5 s (1 h → 24 s)</option><option value="10">1 Bild alle 10 s (1 h → 12 s)</option><option value="30">1 Bild alle 30 s (8 h → 32 s)</option><option value="60">1 Bild pro Minute (8 h → 16 s)</option></select>
+  <div class="muted">Uhrzeit und Stoppuhr laufen im Bild mit. Kein Ton. Gilt für die nächste Aufnahme.</div>
   <div class="muted" style="margin-top:10px">Tipp: Viele Handys haben hinten mehrere Kameras. Die Weitwinkel-Kamera ist oft die mit „0,5×“ oder ein eigener Eintrag in der Liste oben – einfach durchprobieren.</div>
   <button id="cClose" style="width:100%;margin-top:12px">Fertig</button>
+</div></div>
+<div id="sKP" class="sheet hidden"><div><h2>Kurzprotokoll</h2><div id="kpBody" class="kp"></div>
+  <div class="row" style="margin-top:12px"><button id="kpClose">Schließen</button><button id="kpSave" style="background:#1e6fd9;border-color:#1e6fd9;color:#fff;font-weight:800">☁ In OneDrive speichern</button></div>
 </div></div>
 <div id="sRef" class="sheet hidden"><div><h2>Referenz</h2><div id="refBody"></div></div></div>
 <div id="sErr" class="sheet hidden"><div><h2 id="errTitle">Fehlerbericht</h2>
@@ -233,11 +261,13 @@ input[type=range]{padding:0;accent-color:#1e6fd9}
   <div class="row" style="margin-top:10px"><button id="qrTorch">🔦 Licht</button><button id="qrCancel">Abbrechen</button><button id="qrOk" style="background:#1e9e5a;border-color:var(--ok);color:#fff;font-weight:800">Übernehmen</button></div>
 </div></div>
 <script src="jsQR.js" defer></script>
+<script src="mp4-muxer.js" defer></script>
+<script src="mediabunny.js" defer></script>
 <div id="toast" class="hidden"></div>
 
 <script>
 "use strict";
-const TC = {"tests":[{"id":"A-01","ch":"4.1","pre":"Ausgangslage","steps":"Gerät 1 min beobachten.","exp":"LED aus, kein Ton, Motor still.","timer":60,"markers":["Auffälligkeit"],"extra":false,"free":false,"measures":[],"runs":1,"hint":""},{"id":"A-02","ch":"4.1","pre":"Ausgangslage","steps":"Taster drücken und 3 s halten, nicht loslassen.","exp":"LED cyan gedimmt, solange gedrückt. Kein Ton, kein Motor.","timer":3,"markers":["Taster gedrückt","Cyan an"],"extra":false,"free":false,"measures":[],"runs":1,"hint":""},{"id":"A-03","ch":"4.1","pre":"nach A-02","steps":"Taster loslassen.","exp":"Selbsttest startet (LED blau blinkend).","markers":["Taster losgelassen","Blau blinkend","5x grün / Bereit"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"A-04","ch":"4.1","pre":"Ausgangslage","steps":"Taster 10× schnell hintereinander antippen.","exp":"Kein Hängenbleiben. Höchstens ein Selbsttest läuft, er endet normal.","markers":["Erstes Antippen","Letztes Antippen","Blau blinkend","Selbsttest Ende"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"A-05","ch":"4.1","pre":"Ausgangslage","steps":"Taster 30 s gedrückt halten, dann loslassen.","exp":"Cyan während des Haltens, danach Selbsttest. Gerät geht nicht aus.","timer":30,"markers":["Taster gedrückt","Taster losgelassen","Blau blinkend","Selbsttest Ende"],"extra":false,"free":false,"measures":[],"runs":1,"hint":""},{"id":"B-01","ch":"4.2","pre":"Ausgangslage, Akku > 30 %","steps":"Taster kurz drücken und loslassen. Gesamtdauer stoppen.","exp":"Blau blinkend, Motor hinten 3–10 s, Pause, 5 s vor. Ende: 5× grün + „Bereit“. Dauer 15–40 s notieren.","markers":["Taster losgelassen","Blau blinkend","Motor hinten Start","Motor Anschlag","Motor vor Start","5x grün / Bereit"],"measures":[["B_total","Dauer Selbsttest gesamt","Taster losgelassen","5x grün / Bereit",15,40],["B_motor","Motor nach hinten (bis Anschlag)","Motor hinten Start","Motor Anschlag",3,10]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"B-02","ch":"4.2","pre":"nach B-01","steps":"B-01 noch 4× direkt hintereinander wiederholen.","exp":"Jedes Mal gleiches Ergebnis und ähnliche Dauer. Motor steht danach immer etwa in der Mitte.","markers":["Taster losgelassen","Blau blinkend","Motor hinten Start","Motor Anschlag","Motor vor Start","5x grün / Bereit"],"measures":[["B_total","Dauer Selbsttest gesamt","Taster losgelassen","5x grün / Bereit",15,40],["B_motor","Motor nach hinten (bis Anschlag)","Motor hinten Start","Motor Anschlag",3,10]],"runs":4,"extra":false,"free":false,"timer":0,"hint":""},{"id":"B-03","ch":"4.2","pre":"USB angesteckt","steps":"Selbsttest wie B-01 starten.","exp":"Wie B-01. Danach wieder Ladeanzeige.","markers":["Taster losgelassen","Blau blinkend","Motor hinten Start","Motor Anschlag","Motor vor Start","5x grün / Bereit","Ladeanzeige wieder da"],"measures":[["B_total","Dauer Selbsttest gesamt","Taster losgelassen","5x grün / Bereit",15,40],["B_motor","Motor nach hinten (bis Anschlag)","Motor hinten Start","Motor Anschlag",3,10]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"B-04","ch":"4.2","pre":"Selbsttest läuft","steps":"Während der Motor fährt, Taster mehrmals drücken.","exp":"Selbsttest läuft unbeeindruckt weiter und endet normal.","markers":["Taster losgelassen","Motor hinten Start","Taster mehrfach gedrückt","5x grün / Bereit"],"measures":[["B_total","Dauer Selbsttest gesamt","Taster losgelassen","5x grün / Bereit",15,40]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"B-05","ch":"4.2","pre":"Selbsttest läuft (blau)","steps":"Alarm auslösen.","exp":"Selbsttest bricht sofort ab, Alarmablauf (weiß, Sirene, Motor) startet.","markers":["Blau blinkend","Auslösen","LED weiß","Sirene","Motor läuft vor"],"measures":[["B5_abbruch","Auslösen bis LED weiß","Auslösen","LED weiß",0,1.0],["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"B-06","ch":"4.2","pre":"Akku ca. 15–25 %","steps":"Selbsttest starten.","exp":"Ergebnis Warnung: 5× rot/gelb + Ansage „Akku laden“. Kein Hardware-Fehler.","markers":["Taster losgelassen","Blau blinkend","5x rot/gelb","Ansage Akku laden"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"B-07","ch":"4.2","pre":"Selbsttest beendet","steps":"10 s warten, nichts bedienen.","exp":"Motor bleibt still (läuft nicht von selbst an). LED aus, Gerät schläft.","timer":10,"markers":["Selbsttest Ende","LED aus"],"extra":false,"free":false,"measures":[],"runs":1,"hint":""},{"id":"C-01","ch":"4.3","pre":"Ausgangslage (Gerät schläft)","steps":"Alarm auslösen. Zeiten bis LED, Sirene und Motor stoppen.","exp":"Sofort weiß blinkend, Motor läuft vor, Sirene nach ca. 1 s.","markers":["Auslösen","LED weiß","Motor läuft vor","Sirene"],"measures":[["C1_led","Auslösen bis LED weiß","Auslösen","LED weiß",0,1.0],["C1_motor","Auslösen bis Motor","Auslösen","Motor läuft vor",0,1.5],["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"C-02","ch":"4.3","pre":"Alarm läuft, ca. 5 s","steps":"Taster drücken, halten, loslassen. Zeit bis „LED aus“ stoppen.","exp":"Cyan beim Drücken. Beim Loslassen Sirene aus, rot blinkend, dann gelb (Motor zurück), dann 5 s rot + Ansage, dann aus.","markers":["Taster gedrückt (Cyan)","Losgelassen / Sirene aus","Rot blinkend","Gelb an","Gelb aus","Ansage","LED aus"],"measures":[["C_gelb","Loslassen bis gelb","Losgelassen / Sirene aus","Gelb an",null,null],["C_gelbdauer","Gelb (Motor zurück), Dauer","Gelb an","Gelb aus",null,null],["C_aus","Loslassen bis LED aus","Losgelassen / Sirene aus","LED aus",null,null]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"C-03","ch":"4.3","pre":"nach C-02","steps":"30 s beobachten, nicht bedienen.","exp":"Motor bleibt still. Gerät geht in den Schlaf (LED aus).","timer":30,"markers":["LED aus","Auffälligkeit"],"extra":false,"free":false,"measures":[],"runs":1,"hint":""},{"id":"C-04","ch":"4.3","pre":"Ausgangslage","steps":"Alarm auslösen und NICHT quittieren. 60 s beobachten.","exp":"Sirene und Weiß bleiben. Motor hört nach spätestens ca. 20 s auf. Gerät geht nicht aus.","timer":60,"markers":["Auslösen","Sirene","Motor stoppt"],"measures":[["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0],["C4_motor","Auslösen bis Motor stoppt","Auslösen","Motor stoppt",0,22]],"extra":false,"free":false,"runs":1,"hint":""},{"id":"C-05","ch":"4.3","pre":"nach C-04","steps":"Jetzt quittieren.","exp":"Normaler Ablauf wie C-02.","markers":["Taster gedrückt (Cyan)","Losgelassen / Sirene aus","Rot blinkend","Gelb an","Gelb aus","Ansage","LED aus"],"measures":[["C_gelb","Loslassen bis gelb","Losgelassen / Sirene aus","Gelb an",null,null],["C_gelbdauer","Gelb (Motor zurück), Dauer","Gelb an","Gelb aus",null,null],["C_aus","Loslassen bis LED aus","Losgelassen / Sirene aus","LED aus",null,null]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"C-06","ch":"4.3","pre":"Ausgangslage","steps":"Alarm auslösen, sofort (unter 1 s) quittieren.","exp":"Sirene startet nicht oder hört sofort auf. Ablauf wie C-02, kann bis ca. 20 s rot blinken.","markers":["Auslösen","Losgelassen / Sirene aus","Gelb an","Gelb aus","LED aus"],"measures":[["C6_quitt","Auslösen bis Quittierung","Auslösen","Losgelassen / Sirene aus",0,1.0],["C6_aus","Quittierung bis LED aus","Losgelassen / Sirene aus","LED aus",null,30]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"C-07","ch":"4.3","pre":"Reset läuft (rot oder gelb)","steps":"Erneut Alarm auslösen.","exp":"Neuer Alarm hat Vorrang: weiß, Sirene, Motor vor. Danach normal quittierbar.","markers":["Reset läuft (rot/gelb)","Auslösen","LED weiß","Sirene","Losgelassen / Sirene aus","LED aus"],"measures":[["C7_led","Auslösen bis LED weiß","Auslösen","LED weiß",0,1.0]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"C-08","ch":"4.3","pre":"Alarm läuft","steps":"Taster 10× schnell hintereinander drücken.","exp":"Genau eine Quittierung. Ablauf endet normal, kein Hängenbleiben.","markers":["Erstes Drücken","Letztes Drücken","Gelb an","LED aus"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"C-09","ch":"4.3","pre":"Sensor bleibt nass bzw. überbrückt","steps":"Alarm auslösen, quittieren, Sensor NICHT trocknen.","exp":"Ergebnis notieren. Es darf kein Zustand entstehen, in dem der Motor ununterbrochen läuft.","markers":["Auslösen","Losgelassen / Sirene aus","LED aus","Erneuter Alarm","Motor stoppt"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"C-10","ch":"4.3","pre":"Ausgangslage, Akku ca. 20 %","steps":"Alarm auslösen und 30 s laufen lassen.","exp":"Gerät bleibt an, Alarm läuft weiter. Geht es aus oder startet neu: Klasse A.","timer":30,"markers":["Auslösen","Sirene","Motor stoppt","Losgelassen / Sirene aus"],"extra":false,"free":false,"measures":[],"runs":1,"hint":""},{"id":"C-11","ch":"4.3","pre":"Ausgangslage","steps":"20 Zyklen: auslösen, nach 5 s quittieren, bis „LED aus“ warten.","exp":"Alle 20 Zyklen gleich. Anzahl der Abweichungen notieren.","runs":20,"timer":5,"markers":["Auslösen","Sirene","Losgelassen / Sirene aus","Gelb an","Gelb aus","LED aus"],"measures":[["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0],["C_gelb","Loslassen bis gelb","Losgelassen / Sirene aus","Gelb an",null,null],["C_gelbdauer","Gelb (Motor zurück), Dauer","Gelb an","Gelb aus",null,null],["C_aus","Loslassen bis LED aus","Losgelassen / Sirene aus","LED aus",null,null]],"hint":"Pro Zyklus ein Lauf (eigenes Video). OK = Zyklus wie erwartet, NOK = Abweichung. Nach OK startet automatisch der nächste Zyklus.","extra":false,"free":false},{"id":"D-01","ch":"4.4","pre":"Ausgangslage, Akku < 80 %","steps":"USB anstecken.","exp":"Gelb blinkend (langsam).","markers":["USB angesteckt","Gelb blinkend"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"D-02","ch":"4.4","pre":"Laden, Akku 80–98 %","steps":"Beobachten.","exp":"Grün blinkend (langsam).","markers":["Grün blinkend"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"D-03","ch":"4.4","pre":"Laden bis voll","steps":"Bis zum Ende laden. Dauer notieren.","exp":"Grün dauerhaft.","markers":["Ladestart","Grün blinkend","Grün dauerhaft"],"measures":[["D3_dauer","Ladedauer gesamt","Ladestart","Grün dauerhaft",null,null]],"hint":"Langzeit-Test: Video läuft die ganze Ladezeit mit. Alternativ Lauf am Anfang und am Ende getrennt aufnehmen und die Dauer im Beobachtungsfeld notieren.","extra":false,"free":false,"timer":0,"runs":1},{"id":"D-04","ch":"4.4","pre":"Laden","steps":"USB abziehen.","exp":"Ladeanzeige verschwindet nach spätestens ca. 2 s, LED aus.","markers":["USB abgezogen","LED aus"],"measures":[["D4_aus","USB ab bis LED aus","USB abgezogen","LED aus",0,2.5]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"D-05","ch":"4.4","pre":"Ausgangslage","steps":"USB 10× schnell an- und abstecken (ca. 1 s Takt), dann stecken lassen.","exp":"Danach korrekte Ladeanzeige. LED bleibt nicht dunkel, Gerät hängt nicht.","markers":["Start Stecken","Stecken lassen","Ladeanzeige"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"D-06","ch":"4.4","pre":"Gerät schläft","steps":"USB anstecken.","exp":"Gerät wacht auf, Ladeanzeige erscheint.","markers":["USB angesteckt","Ladeanzeige"],"measures":[["D6_led","USB an bis Ladeanzeige","USB angesteckt","Ladeanzeige",0,3]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"D-07","ch":"4.4","pre":"Laden","steps":"Alarm auslösen und quittieren.","exp":"Alarmablauf wie C-01/C-02. Danach wieder Ladeanzeige.","markers":["Auslösen","Sirene","Losgelassen / Sirene aus","Gelb an","Gelb aus","Ladeanzeige"],"measures":[["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"D-08","ch":"4.4","pre":"Alarm läuft (ohne USB)","steps":"USB anstecken, danach quittieren.","exp":"Alarm läuft weiter, bis quittiert wird. Danach Ladeanzeige.","markers":["Auslösen","USB angesteckt","Losgelassen / Sirene aus","Ladeanzeige"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"D-09","ch":"4.4","pre":"Laden, PC-USB","steps":"Prüfen, ob der PC das Gerät erkennt (falls vorgegeben).","exp":"Gerät wird erkannt bzw. Verhalten laut Vorgabe.","markers":["USB angesteckt","PC erkennt Gerät"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"E-01","ch":"4.5","pre":"nach einer Bedienung","steps":"Zeit bis „LED aus“ stoppen.","exp":"Nach ca. 5 s ohne Bedienung geht das Gerät in Ruhe.","markers":["Letzte Bedienung","LED aus"],"measures":[["E1_ruhe","Letzte Bedienung bis LED aus","Letzte Bedienung","LED aus",3,8]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"E-02","ch":"4.5","pre":"Gerät schläft > 1 min","steps":"Taster kurz drücken.","exp":"Reaktion sofort (Cyan, dann Selbsttest).","markers":["Taster gedrückt","Cyan an","Blau blinkend"],"measures":[["E2_cyan","Drücken bis Cyan","Taster gedrückt","Cyan an",0,0.5]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"E-03","ch":"4.5","pre":"Gerät schläft > 10 min","steps":"Alarm auslösen.","exp":"Sofort Alarm wie C-01.","markers":["Auslösen","LED weiß","Motor läuft vor","Sirene"],"measures":[["E3_led","Auslösen bis LED weiß","Auslösen","LED weiß",0,1.0],["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"E-04","ch":"4.5","pre":"Gerät schläft über Nacht (> 8 h)","steps":"Morgens Alarm auslösen, dann Selbsttest.","exp":"Beides funktioniert normal.","markers":["Auslösen","Sirene","Losgelassen / Sirene aus","LED aus","Taster losgelassen","5x grün / Bereit"],"measures":[["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"E-05","ch":"4.5","pre":"beliebig","steps":"Nach jedem Test prüfen, ob der Motor im Ruhezustand still ist.","exp":"Motor läuft im Ruhezustand NIE (sonst Klasse A).","markers":["Auffälligkeit"],"hint":"Querschnittsprüfung über die ganze Sitzung. Am Ende bewerten; bei Motorlauf in Ruhe sofort Fehlerbericht Klasse A.","extra":false,"free":false,"measures":[],"timer":0,"runs":1},{"id":"F-01","ch":"4.6","pre":"Akku voll, ohne USB","steps":"Gerät über Tage nutzen, täglich 3 Alarme + 3 Selbsttests. Akkustand laut Selbsttest notieren.","exp":"Warnung beim Selbsttest unter ca. 25 %. Alarm funktioniert bis zuletzt.","markers":["Auslösen","Sirene","Losgelassen / Sirene aus","Taster losgelassen","5x grün / Bereit","5x rot/gelb"],"hint":"Mehrtägig: jeden Alarm/Selbsttest als eigenen Lauf aufnehmen, Akkustand ins Beobachtungsfeld.","extra":false,"free":false,"measures":[],"timer":0,"runs":1},{"id":"F-02","ch":"4.6","pre":"Akku fast leer","steps":"Alarm auslösen.","exp":"Alarm läuft oder das Gerät verhält sich erkennbar (z. B. Warnung). Kein stilles Versagen ohne Anzeige.","markers":["Auslösen","LED weiß","Sirene","Warnung"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"F-03","ch":"4.6","pre":"Akku komplett leer","steps":"USB anstecken, 30 min laden, dann Selbsttest.","exp":"Gerät startet, lädt und besteht den Selbsttest.","markers":["USB angesteckt","Ladeanzeige","Taster losgelassen","5x grün / Bereit"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"G-01","ch":"4.7","pre":"Gerät 30 min im Kühlschrank (ca. 5 °C)","steps":"Herausnehmen, Taster drücken bzw. warten.","exp":"Ggf. 20 s rot blinkend + Ansage „Temperatur zu niedrig“. Selbsttest eventuell mit Warnung.","markers":["Taster gedrückt","Rot blinkend Start","Ansage Temperatur","Rot blinkend Ende"],"measures":[["G_rot","Rot blinkend Dauer","Rot blinkend Start","Rot blinkend Ende",15,25]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"G-02","ch":"4.7","pre":"Gerät warm (ca. 45 °C, nicht heißer)","steps":"Taster drücken bzw. warten.","exp":"Ggf. 20 s rot blinkend + Ansage „Temperatur zu hoch“.","markers":["Taster gedrückt","Rot blinkend Start","Ansage Temperatur","Rot blinkend Ende"],"measures":[["G_rot","Rot blinkend Dauer","Rot blinkend Start","Rot blinkend Ende",15,25]],"extra":false,"free":false,"timer":0,"runs":1,"hint":""},{"id":"G-03","ch":"4.7","pre":"nach G-01 bzw. G-02","steps":"Bei Raumtemperatur 30 min liegen lassen, Selbsttest.","exp":"Selbsttest bestanden.","markers":["Taster losgelassen","5x grün / Bereit"],"extra":false,"free":false,"measures":[],"timer":0,"runs":1,"hint":""},{"id":"H-01","ch":"4.8","pre":"beliebig","steps":"Ungewöhnliche Kombinationen ausprobieren, z. B. Alarm während des Ansteckens, Taster gleichzeitig mit dem Auslösen, Selbsttest kurz vor dem Einschlafen.","exp":"Gerät bleibt bedienbar, Alarm hat immer Vorrang. Jeden Versuch im Test-Log (Kapitel 7) notieren.","markers":["Aktion 1","Aktion 2","Auslösen","Sirene","Auffälligkeit"],"hint":"Jede Kombination = eigener Lauf. Kurz ins Beobachtungsfeld schreiben, was probiert wurde.","extra":false,"free":false,"measures":[],"timer":0,"runs":1},{"id":"H-02","ch":"4.8","pre":"beliebig","steps":"Abläufe abbrechen: USB abziehen während Selbsttest, Alarm während Reset usw.","exp":"Kein Hängenbleiben, kein Dauerlauf des Motors.","markers":["Aktion 1","Aktion 2","Auslösen","Auffälligkeit"],"hint":"Jede Abbruch-Variante = eigener Lauf mit Beschreibung.","extra":false,"free":false,"measures":[],"timer":0,"runs":1},{"id":"W-01","ch":"4.9","extra":true,"pre":"Dummy mit angelegter AirMate-Weste, Patrone eingesetzt, Gerät bereit. Becken ausreichend tief. Kamera auf die Wasseroberfläche richten.","steps":"Dummy ins Wasser geben bzw. untertauchen. Beim Eintauchen sofort „Eintauchen“ antippen, sobald der Kopf des Dummys wieder an der Oberfläche ist „An der Oberfläche“.","exp":"Gerät löst aus, Weste füllt sich, Dummy ist spätestens 10 s nach dem Eintauchen wieder an der Wasseroberfläche (Atemwege über Wasser).","timer":10,"markers":["Eintauchen","Auslösung (LED/Sirene)","Weste gefüllt","An der Oberfläche"],"measures":[["W1_oberfl","Eintauchen bis Oberfläche","Eintauchen","An der Oberfläche",0,10],["W1_ausl","Eintauchen bis Auslösung","Eintauchen","Auslösung (LED/Sirene)",null,null],["W1_fuell","Auslösung bis Weste gefüllt","Auslösung (LED/Sirene)","Weste gefüllt",null,null]],"hint":"Der Balken unter der Stoppuhr zeigt die 10-s-Grenze. Die Zeit „Eintauchen bis Oberfläche“ wird grün (≤ 10 s) oder rot angezeigt.","free":false,"runs":1},{"id":"FREI","ch":"★","free":true,"pre":"Beliebig – du entscheidest, was dokumentiert wird.","steps":"▶ AUFNAHME STARTEN, Titel eingeben (z. B. „Dichtheit nach Sturz“), filmen und bei Bedarf 📷 Fotos machen. Mit ■ STOPP & SPEICHERN beenden.","exp":"Jede Aufnahme wird mit Titel, Notiz, Video und Fotos gespeichert und im Bericht im Anhang aufgeführt.","markers":[],"extra":false,"measures":[],"timer":0,"runs":1,"hint":""}],"chapters":[["4.1","Grundzustand und Taster"],["4.2","Selbsttest"],["4.3","Alarm und Quittierung"],["4.4","Laden"],["4.5","Ruhe, Schlaf und Aufwachen"],["4.6","Akku leer und Unterspannung"],["4.7","Temperatur (optional, nur nach Freigabe)"],["4.8","Freie Tests (Fehlersuche)"],["4.9","Wassertests (AirMate intern)"],["★","Freier Modus – eigene Aufnahmen & Fotos"]],"timing":[["B-01: Dauer Selbsttest gesamt","B_total",["B-01","B-02","B-03"]],["B-01: Motor nach hinten (bis Anschlag)","B_motor",["B-01","B-02","B-03"]],["C-01: Auslösen bis Sirene","C_sirene",["C-01","C-04","C-11","E-03"]],["C-02: Loslassen bis gelb","C_gelb",["C-02","C-05","C-11"]],["C-02: gelb (Motor zurück), Dauer","C_gelbdauer",["C-02","C-05","C-11"]],["C-02: Loslassen bis LED aus","C_aus",["C-02","C-05","C-11"]]],"errclasses":[["A","Kritisch (Sicherheit)","Alarm wird nicht ausgelöst. Motor läuft ohne Alarm oder hört nicht mehr auf. Gerät geht während eines Alarms aus bzw. startet neu. Gerät lässt sich nicht mehr bedienen."],["B","Hoch","Quittierung funktioniert nicht oder erst nach mehreren Versuchen. Sirene bleibt nach der Quittierung an. Selbsttest meldet Fehler bei intaktem Gerät. Laden funktioniert nicht."],["C","Mittel","Falsche LED-Farbe oder -Muster. Zeiten deutlich außerhalb der Angaben. Ansage fehlt."],["D","Gering","Kosmetisches, z. B. kurzes Flackern, leiser Ton, uneinheitliche Helligkeit."]],"led":[["1","Gelb dauerhaft","–","Motor fährt nach einer Quittierung zurück in die Ausgangslage.","#f5c400"],["2","Rot, schnell blinkend","–","Alarm quittiert, Gerät wartet, bis beide Controller fertig sind (bis ca. 20 s ab Auslösung).","#e5383b"],["3","Weiß, schnell blinkend","Sirene (Dauerschleife), ca. 1 s nach LED","ALARM aktiv. Motor läuft vor.","#ffffff"],["4","Rot, schnell blinkend, 5 s","Ansage nach dem Reset","Reset abgeschlossen.","#e5383b"],["5","Rot, schnell blinkend, 20 s","„Temperatur zu hoch“ / „zu niedrig“","Akkutemperatur außerhalb des zulässigen Bereichs.","#e5383b"],["6","Gelb blinkend (langsam)","–","Laden, Akku unter 80 %.","#f5c400"],["6","Grün blinkend (langsam)","–","Laden, Akku 80 bis 98 %.","#2ecc71"],["6","Grün dauerhaft","–","Laden, Akku voll.","#2ecc71"],["–","Cyan, gedimmt","–","Taster ist gedrückt (in jedem Zustand).","#22d3ee"],["–","Blau blinkend","–","Selbsttest läuft.","#3b82f6"],["–","5× grün blinken","Ansage „Bereit“","Selbsttest bestanden.","#2ecc71"],["–","5× rot/gelb blinken","Ansage zur Ursache","Selbsttest mit Warnung (Akku niedrig oder Temperatur).","#f59e0b"],["–","Rot dauerhaft, ca. 5 s","–","Selbsttest fehlgeschlagen (Hardware-Fehler).","#e5383b"],["–","Aus","–","Ruhe bzw. Schlaf (nach ca. 5 s ohne Bedienung).","#555555"]],"soll_alarm":["Auslösen: LED weiß blinkend, Motor läuft vor, nach ca. 1 s Sirene.","Ohne Quittierung: Sirene und weißes Blinken bleiben an. Motor hört nach spätestens ca. 20 s auf.","Taster drücken (Cyan) und loslassen: Sirene sofort aus, LED rot blinkend.","LED gelb dauerhaft: Motor fährt zurück, bis er hinten anschlägt (wenige Sekunden).","LED 5 s rot blinkend, Ansage nach dem Reset.","Danach LED aus. Nach ca. 5 s ohne Bedienung Schlaf."],"soll_st":["Taster kurz drücken und loslassen (kein Alarm aktiv): LED blau blinkend.","Nach ca. 2 s interne Prüfungen (nicht sichtbar).","Motor hinten bis Anschlag (ca. 3–10 s), Pause ca. 2 s, dann ca. 5 s vor in die Mitte.","Ergebnis: 5× grün + „Bereit“, bzw. Warnung oder Fehler laut LED-Tabelle.","Gesamtdauer typisch ca. 15–40 s."],"rules":["Jeden Testfall einzeln durchführen und sofort eintragen: OK oder NOK, dazu die beobachteten Zeiten.","Bei jedem Ablauf läuft das Video automatisch mit (Dateiname Testfall-ID_Datum_Uhrzeit).","Ein Fehler, der nur einmal auftritt, ist trotzdem ein Fehler → Testfall 3× wiederholen, Häufigkeit wird automatisch gezählt.","Zwischen zwei Alarmen mindestens bis „LED aus“ warten, außer der Testfall verlangt etwas anderes.","Gerät geht von selbst aus, startet neu oder reagiert nicht mehr → sofort Fehlerbericht Klasse A.","Nichts „reparieren“: Gerät im fehlerhaften Zustand lassen, Video weiterlaufen lassen, dann erst weiter."],"fw":{"fw_uc1":"U073CC_FW V02R09","fw_uc2":"U031_FW V02R11","bl_uc1":"U073CC_BL V01R05"},"protocol":"Testprotokoll Extern UC1 V02R09"};
+const TC = {"tests":[{"id":"A-01","ch":"4.1","pre":"Ausgangslage","steps":"Gerät 1 min beobachten.","exp":"LED aus, kein Ton, Motor still.","timer":60,"markers":["Auffälligkeit"],"extra":false,"free":false,"measures":[],"timer_from":"","runs":1,"hint":""},{"id":"A-02","ch":"4.1","pre":"Ausgangslage","steps":"Taster drücken und 3 s halten, nicht loslassen.","exp":"LED cyan gedimmt, solange gedrückt. Kein Ton, kein Motor.","timer":3,"timer_from":"Taster gedrückt","markers":["Taster gedrückt","Cyan an"],"extra":false,"free":false,"measures":[],"runs":1,"hint":""},{"id":"A-03","ch":"4.1","pre":"nach A-02","steps":"Taster loslassen.","exp":"Selbsttest startet (LED blau blinkend).","markers":["Taster losgelassen","Blau blinkend","5x grün / Bereit"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"A-04","ch":"4.1","pre":"Ausgangslage","steps":"Taster 10× schnell hintereinander antippen.","exp":"Kein Hängenbleiben. Höchstens ein Selbsttest läuft, er endet normal.","markers":["Erstes Antippen","Letztes Antippen","Blau blinkend","Selbsttest Ende"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"A-05","ch":"4.1","pre":"Ausgangslage","steps":"Taster 30 s gedrückt halten, dann loslassen.","exp":"Cyan während des Haltens, danach Selbsttest. Gerät geht nicht aus.","timer":30,"timer_from":"Taster gedrückt","markers":["Taster gedrückt","Taster losgelassen","Blau blinkend","Selbsttest Ende"],"extra":false,"free":false,"measures":[],"runs":1,"hint":""},{"id":"B-01","ch":"4.2","pre":"Ausgangslage, Akku > 30 %","steps":"Taster kurz drücken und loslassen. Gesamtdauer stoppen.","exp":"Blau blinkend, Motor hinten 3–10 s, Pause, 5 s vor. Ende: 5× grün + „Bereit“. Dauer 15–40 s notieren.","markers":["Taster losgelassen","Blau blinkend","Motor hinten Start","Motor Anschlag","Motor vor Start","5x grün / Bereit"],"measures":[["B_total","Dauer Selbsttest gesamt","Taster losgelassen","5x grün / Bereit",15,40],["B_motor","Motor nach hinten (bis Anschlag)","Motor hinten Start","Motor Anschlag",3,10]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"B-02","ch":"4.2","pre":"nach B-01","steps":"B-01 noch 4× direkt hintereinander wiederholen.","exp":"Jedes Mal gleiches Ergebnis und ähnliche Dauer. Motor steht danach immer etwa in der Mitte.","markers":["Taster losgelassen","Blau blinkend","Motor hinten Start","Motor Anschlag","Motor vor Start","5x grün / Bereit"],"measures":[["B_total","Dauer Selbsttest gesamt","Taster losgelassen","5x grün / Bereit",15,40],["B_motor","Motor nach hinten (bis Anschlag)","Motor hinten Start","Motor Anschlag",3,10]],"runs":4,"extra":false,"free":false,"timer":0,"timer_from":"","hint":""},{"id":"B-03","ch":"4.2","pre":"USB angesteckt","steps":"Selbsttest wie B-01 starten.","exp":"Wie B-01. Danach wieder Ladeanzeige.","markers":["Taster losgelassen","Blau blinkend","Motor hinten Start","Motor Anschlag","Motor vor Start","5x grün / Bereit","Ladeanzeige wieder da"],"measures":[["B_total","Dauer Selbsttest gesamt","Taster losgelassen","5x grün / Bereit",15,40],["B_motor","Motor nach hinten (bis Anschlag)","Motor hinten Start","Motor Anschlag",3,10]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"B-04","ch":"4.2","pre":"Selbsttest läuft","steps":"Während der Motor fährt, Taster mehrmals drücken.","exp":"Selbsttest läuft unbeeindruckt weiter und endet normal.","markers":["Taster losgelassen","Motor hinten Start","Taster mehrfach gedrückt","5x grün / Bereit"],"measures":[["B_total","Dauer Selbsttest gesamt","Taster losgelassen","5x grün / Bereit",15,40]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"B-05","ch":"4.2","pre":"Selbsttest läuft (blau)","steps":"Alarm auslösen.","exp":"Selbsttest bricht sofort ab, Alarmablauf (weiß, Sirene, Motor) startet.","markers":["Blau blinkend","Auslösen","LED weiß","Sirene","Motor läuft vor"],"measures":[["B5_abbruch","Auslösen bis LED weiß","Auslösen","LED weiß",0,1.0],["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"B-06","ch":"4.2","pre":"Akku ca. 15–25 %","steps":"Selbsttest starten.","exp":"Ergebnis Warnung: 5× rot/gelb + Ansage „Akku laden“. Kein Hardware-Fehler.","markers":["Taster losgelassen","Blau blinkend","5x rot/gelb","Ansage Akku laden"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"B-07","ch":"4.2","pre":"Selbsttest beendet","steps":"10 s warten, nichts bedienen.","exp":"Motor bleibt still (läuft nicht von selbst an). LED aus, Gerät schläft.","timer":10,"markers":["Selbsttest Ende","LED aus"],"extra":false,"free":false,"measures":[],"timer_from":"","runs":1,"hint":""},{"id":"C-01","ch":"4.3","pre":"Ausgangslage (Gerät schläft)","steps":"Alarm auslösen. Zeiten bis LED, Sirene und Motor stoppen.","exp":"Sofort weiß blinkend, Motor läuft vor, Sirene nach ca. 1 s.","markers":["Auslösen","LED weiß","Motor läuft vor","Sirene"],"measures":[["C1_led","Auslösen bis LED weiß","Auslösen","LED weiß",0,1.0],["C1_motor","Auslösen bis Motor","Auslösen","Motor läuft vor",0,1.5],["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"C-02","ch":"4.3","pre":"Alarm läuft, ca. 5 s","steps":"Taster drücken, halten, loslassen. Zeit bis „LED aus“ stoppen.","exp":"Cyan beim Drücken. Beim Loslassen Sirene aus, rot blinkend, dann gelb (Motor zurück), dann 5 s rot + Ansage, dann aus.","markers":["Taster gedrückt (Cyan)","Losgelassen / Sirene aus","Rot blinkend","Gelb an","Gelb aus","Ansage","LED aus"],"measures":[["C_gelb","Loslassen bis gelb","Losgelassen / Sirene aus","Gelb an",null,null],["C_gelbdauer","Gelb (Motor zurück), Dauer","Gelb an","Gelb aus",null,null],["C_aus","Loslassen bis LED aus","Losgelassen / Sirene aus","LED aus",null,null]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"C-03","ch":"4.3","pre":"nach C-02","steps":"30 s beobachten, nicht bedienen.","exp":"Motor bleibt still. Gerät geht in den Schlaf (LED aus).","timer":30,"markers":["LED aus","Auffälligkeit"],"extra":false,"free":false,"measures":[],"timer_from":"","runs":1,"hint":""},{"id":"C-04","ch":"4.3","pre":"Ausgangslage","steps":"Alarm auslösen und NICHT quittieren. 60 s beobachten.","exp":"Sirene und Weiß bleiben. Motor hört nach spätestens ca. 20 s auf. Gerät geht nicht aus.","timer":60,"timer_from":"Auslösen","markers":["Auslösen","Sirene","Motor stoppt"],"measures":[["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0],["C4_motor","Auslösen bis Motor stoppt","Auslösen","Motor stoppt",0,22]],"extra":false,"free":false,"runs":1,"hint":""},{"id":"C-05","ch":"4.3","pre":"nach C-04","steps":"Jetzt quittieren.","exp":"Normaler Ablauf wie C-02.","markers":["Taster gedrückt (Cyan)","Losgelassen / Sirene aus","Rot blinkend","Gelb an","Gelb aus","Ansage","LED aus"],"measures":[["C_gelb","Loslassen bis gelb","Losgelassen / Sirene aus","Gelb an",null,null],["C_gelbdauer","Gelb (Motor zurück), Dauer","Gelb an","Gelb aus",null,null],["C_aus","Loslassen bis LED aus","Losgelassen / Sirene aus","LED aus",null,null]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"C-06","ch":"4.3","pre":"Ausgangslage","steps":"Alarm auslösen, sofort (unter 1 s) quittieren.","exp":"Sirene startet nicht oder hört sofort auf. Ablauf wie C-02, kann bis ca. 20 s rot blinken.","markers":["Auslösen","Losgelassen / Sirene aus","Gelb an","Gelb aus","LED aus"],"measures":[["C6_quitt","Auslösen bis Quittierung","Auslösen","Losgelassen / Sirene aus",0,1.0],["C6_aus","Quittierung bis LED aus","Losgelassen / Sirene aus","LED aus",null,30]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"C-07","ch":"4.3","pre":"Reset läuft (rot oder gelb)","steps":"Erneut Alarm auslösen.","exp":"Neuer Alarm hat Vorrang: weiß, Sirene, Motor vor. Danach normal quittierbar.","markers":["Reset läuft (rot/gelb)","Auslösen","LED weiß","Sirene","Losgelassen / Sirene aus","LED aus"],"measures":[["C7_led","Auslösen bis LED weiß","Auslösen","LED weiß",0,1.0]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"C-08","ch":"4.3","pre":"Alarm läuft","steps":"Taster 10× schnell hintereinander drücken.","exp":"Genau eine Quittierung. Ablauf endet normal, kein Hängenbleiben.","markers":["Erstes Drücken","Letztes Drücken","Gelb an","LED aus"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"C-09","ch":"4.3","pre":"Sensor bleibt nass bzw. überbrückt","steps":"Alarm auslösen, quittieren, Sensor NICHT trocknen.","exp":"Ergebnis notieren. Es darf kein Zustand entstehen, in dem der Motor ununterbrochen läuft.","markers":["Auslösen","Losgelassen / Sirene aus","LED aus","Erneuter Alarm","Motor stoppt"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"C-10","ch":"4.3","pre":"Ausgangslage, Akku ca. 20 %","steps":"Alarm auslösen und 30 s laufen lassen.","exp":"Gerät bleibt an, Alarm läuft weiter. Geht es aus oder startet neu: Klasse A.","timer":30,"timer_from":"Auslösen","markers":["Auslösen","Sirene","Motor stoppt","Losgelassen / Sirene aus"],"extra":false,"free":false,"measures":[],"runs":1,"hint":""},{"id":"C-11","ch":"4.3","pre":"Ausgangslage","steps":"20 Zyklen: auslösen, nach 5 s quittieren, bis „LED aus“ warten.","exp":"Alle 20 Zyklen gleich. Anzahl der Abweichungen notieren.","runs":20,"timer":5,"timer_from":"Auslösen","markers":["Auslösen","Sirene","Losgelassen / Sirene aus","Gelb an","Gelb aus","LED aus"],"measures":[["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0],["C_gelb","Loslassen bis gelb","Losgelassen / Sirene aus","Gelb an",null,null],["C_gelbdauer","Gelb (Motor zurück), Dauer","Gelb an","Gelb aus",null,null],["C_aus","Loslassen bis LED aus","Losgelassen / Sirene aus","LED aus",null,null]],"hint":"Pro Zyklus ein Lauf (eigenes Video). OK = Zyklus wie erwartet, NOK = Abweichung. Nach OK startet automatisch der nächste Zyklus.","extra":false,"free":false},{"id":"D-01","ch":"4.4","pre":"Ausgangslage, Akku < 80 %","steps":"USB anstecken.","exp":"Gelb blinkend (langsam).","markers":["USB angesteckt","Gelb blinkend"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"D-02","ch":"4.4","pre":"Laden, Akku 80–98 %","steps":"Beobachten.","exp":"Grün blinkend (langsam).","markers":["Grün blinkend"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"D-03","ch":"4.4","pre":"Laden bis voll","steps":"Bis zum Ende laden. Dauer notieren.","exp":"Grün dauerhaft.","markers":["Ladestart","Grün blinkend","Grün dauerhaft"],"measures":[["D3_dauer","Ladedauer gesamt","Ladestart","Grün dauerhaft",null,null]],"hint":"Langzeit-Test: Video läuft die ganze Ladezeit mit. Alternativ Lauf am Anfang und am Ende getrennt aufnehmen und die Dauer im Beobachtungsfeld notieren.","extra":false,"free":false,"timer":0,"timer_from":"","runs":1},{"id":"D-04","ch":"4.4","pre":"Laden","steps":"USB abziehen.","exp":"Ladeanzeige verschwindet nach spätestens ca. 2 s, LED aus.","markers":["USB abgezogen","LED aus"],"measures":[["D4_aus","USB ab bis LED aus","USB abgezogen","LED aus",0,2.5]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"D-05","ch":"4.4","pre":"Ausgangslage","steps":"USB 10× schnell an- und abstecken (ca. 1 s Takt), dann stecken lassen.","exp":"Danach korrekte Ladeanzeige. LED bleibt nicht dunkel, Gerät hängt nicht.","markers":["Start Stecken","Stecken lassen","Ladeanzeige"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"D-06","ch":"4.4","pre":"Gerät schläft","steps":"USB anstecken.","exp":"Gerät wacht auf, Ladeanzeige erscheint.","markers":["USB angesteckt","Ladeanzeige"],"measures":[["D6_led","USB an bis Ladeanzeige","USB angesteckt","Ladeanzeige",0,3]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"D-07","ch":"4.4","pre":"Laden","steps":"Alarm auslösen und quittieren.","exp":"Alarmablauf wie C-01/C-02. Danach wieder Ladeanzeige.","markers":["Auslösen","Sirene","Losgelassen / Sirene aus","Gelb an","Gelb aus","Ladeanzeige"],"measures":[["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"D-08","ch":"4.4","pre":"Alarm läuft (ohne USB)","steps":"USB anstecken, danach quittieren.","exp":"Alarm läuft weiter, bis quittiert wird. Danach Ladeanzeige.","markers":["Auslösen","USB angesteckt","Losgelassen / Sirene aus","Ladeanzeige"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"D-09","ch":"4.4","pre":"Laden, PC-USB","steps":"Prüfen, ob der PC das Gerät erkennt (falls vorgegeben).","exp":"Gerät wird erkannt bzw. Verhalten laut Vorgabe.","markers":["USB angesteckt","PC erkennt Gerät"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"E-01","ch":"4.5","pre":"nach einer Bedienung","steps":"Zeit bis „LED aus“ stoppen.","exp":"Nach ca. 5 s ohne Bedienung geht das Gerät in Ruhe.","markers":["Letzte Bedienung","LED aus"],"measures":[["E1_ruhe","Letzte Bedienung bis LED aus","Letzte Bedienung","LED aus",3,8]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"E-02","ch":"4.5","pre":"Gerät schläft > 1 min","steps":"Taster kurz drücken.","exp":"Reaktion sofort (Cyan, dann Selbsttest).","markers":["Taster gedrückt","Cyan an","Blau blinkend"],"measures":[["E2_cyan","Drücken bis Cyan","Taster gedrückt","Cyan an",0,0.5]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"E-03","ch":"4.5","pre":"Gerät schläft > 10 min","steps":"Alarm auslösen.","exp":"Sofort Alarm wie C-01.","markers":["Auslösen","LED weiß","Motor läuft vor","Sirene"],"measures":[["E3_led","Auslösen bis LED weiß","Auslösen","LED weiß",0,1.0],["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"E-04","ch":"4.5","pre":"Gerät schläft über Nacht (> 8 h)","steps":"Morgens Alarm auslösen, dann Selbsttest.","exp":"Beides funktioniert normal.","markers":["Auslösen","Sirene","Losgelassen / Sirene aus","LED aus","Taster losgelassen","5x grün / Bereit"],"measures":[["C_sirene","Auslösen bis Sirene","Auslösen","Sirene",0.3,2.0]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"E-05","ch":"4.5","pre":"beliebig","steps":"Nach jedem Test prüfen, ob der Motor im Ruhezustand still ist.","exp":"Motor läuft im Ruhezustand NIE (sonst Klasse A).","markers":["Auffälligkeit"],"hint":"Querschnittsprüfung über die ganze Sitzung. Am Ende bewerten; bei Motorlauf in Ruhe sofort Fehlerbericht Klasse A.","extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1},{"id":"F-01","ch":"4.6","pre":"Akku voll, ohne USB","steps":"Gerät über Tage nutzen, täglich 3 Alarme + 3 Selbsttests. Akkustand laut Selbsttest notieren.","exp":"Warnung beim Selbsttest unter ca. 25 %. Alarm funktioniert bis zuletzt.","markers":["Auslösen","Sirene","Losgelassen / Sirene aus","Taster losgelassen","5x grün / Bereit","5x rot/gelb"],"hint":"Mehrtägig: jeden Alarm/Selbsttest als eigenen Lauf aufnehmen, Akkustand ins Beobachtungsfeld.","extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1},{"id":"F-02","ch":"4.6","pre":"Akku fast leer","steps":"Alarm auslösen.","exp":"Alarm läuft oder das Gerät verhält sich erkennbar (z. B. Warnung). Kein stilles Versagen ohne Anzeige.","markers":["Auslösen","LED weiß","Sirene","Warnung"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"F-03","ch":"4.6","pre":"Akku komplett leer","steps":"USB anstecken, 30 min laden, dann Selbsttest.","exp":"Gerät startet, lädt und besteht den Selbsttest.","markers":["USB angesteckt","Ladeanzeige","Taster losgelassen","5x grün / Bereit"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"G-01","ch":"4.7","pre":"Gerät 30 min im Kühlschrank (ca. 5 °C)","steps":"Herausnehmen, Taster drücken bzw. warten.","exp":"Ggf. 20 s rot blinkend + Ansage „Temperatur zu niedrig“. Selbsttest eventuell mit Warnung.","markers":["Taster gedrückt","Rot blinkend Start","Ansage Temperatur","Rot blinkend Ende"],"measures":[["G_rot","Rot blinkend Dauer","Rot blinkend Start","Rot blinkend Ende",15,25]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"G-02","ch":"4.7","pre":"Gerät warm (ca. 45 °C, nicht heißer)","steps":"Taster drücken bzw. warten.","exp":"Ggf. 20 s rot blinkend + Ansage „Temperatur zu hoch“.","markers":["Taster gedrückt","Rot blinkend Start","Ansage Temperatur","Rot blinkend Ende"],"measures":[["G_rot","Rot blinkend Dauer","Rot blinkend Start","Rot blinkend Ende",15,25]],"extra":false,"free":false,"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"G-03","ch":"4.7","pre":"nach G-01 bzw. G-02","steps":"Bei Raumtemperatur 30 min liegen lassen, Selbsttest.","exp":"Selbsttest bestanden.","markers":["Taster losgelassen","5x grün / Bereit"],"extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""},{"id":"H-01","ch":"4.8","pre":"beliebig","steps":"Ungewöhnliche Kombinationen ausprobieren, z. B. Alarm während des Ansteckens, Taster gleichzeitig mit dem Auslösen, Selbsttest kurz vor dem Einschlafen.","exp":"Gerät bleibt bedienbar, Alarm hat immer Vorrang. Jeden Versuch im Test-Log (Kapitel 7) notieren.","markers":["Aktion 1","Aktion 2","Auslösen","Sirene","Auffälligkeit"],"hint":"Jede Kombination = eigener Lauf. Kurz ins Beobachtungsfeld schreiben, was probiert wurde.","extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1},{"id":"H-02","ch":"4.8","pre":"beliebig","steps":"Abläufe abbrechen: USB abziehen während Selbsttest, Alarm während Reset usw.","exp":"Kein Hängenbleiben, kein Dauerlauf des Motors.","markers":["Aktion 1","Aktion 2","Auslösen","Auffälligkeit"],"hint":"Jede Abbruch-Variante = eigener Lauf mit Beschreibung.","extra":false,"free":false,"measures":[],"timer":0,"timer_from":"","runs":1},{"id":"W-01","ch":"4.9","extra":true,"pre":"Dummy mit angelegter AirMate-Weste, Patrone eingesetzt, Gerät bereit. Becken ausreichend tief. Kamera auf die Wasseroberfläche richten.","steps":"Dummy ins Wasser geben bzw. untertauchen. Beim Eintauchen sofort „Eintauchen“ antippen, sobald der Kopf des Dummys wieder an der Oberfläche ist „An der Oberfläche“.","exp":"Gerät löst aus, Weste füllt sich, Dummy ist spätestens 10 s nach dem Eintauchen wieder an der Wasseroberfläche (Atemwege über Wasser).","timer":10,"timer_from":"Eintauchen","markers":["Eintauchen","Auslösung (LED/Sirene)","Weste gefüllt","An der Oberfläche"],"measures":[["W1_oberfl","Eintauchen bis Oberfläche","Eintauchen","An der Oberfläche",0,10],["W1_ausl","Eintauchen bis Auslösung","Eintauchen","Auslösung (LED/Sirene)",null,null],["W1_fuell","Auslösung bis Weste gefüllt","Auslösung (LED/Sirene)","Weste gefüllt",null,null]],"hint":"Aufnahme ruhig schon beim Vorbereiten starten – das 10-s-Limit läuft erst ab der Zeitmarke „Eintauchen“. Die Zeit „Eintauchen bis Oberfläche“ wird grün (≤ 10 s) oder rot angezeigt.","free":false,"runs":1},{"id":"FREI","ch":"★","free":true,"pre":"Beliebig – du entscheidest, was dokumentiert wird.","steps":"▶ AUFNAHME STARTEN, Titel eingeben (z. B. „Dichtheit nach Sturz“), filmen und bei Bedarf 📷 Fotos machen. Mit ■ STOPP & SPEICHERN beenden.","exp":"Jede Aufnahme wird mit Titel, Notiz, Video und Fotos gespeichert und im Bericht im Anhang aufgeführt.","markers":[],"extra":false,"measures":[],"timer":0,"timer_from":"","runs":1,"hint":""}],"chapters":[["4.1","Grundzustand und Taster"],["4.2","Selbsttest"],["4.3","Alarm und Quittierung"],["4.4","Laden"],["4.5","Ruhe, Schlaf und Aufwachen"],["4.6","Akku leer und Unterspannung"],["4.7","Temperatur (optional, nur nach Freigabe)"],["4.8","Freie Tests (Fehlersuche)"],["4.9","Wassertests (AirMate intern)"],["★","Freier Modus – eigene Aufnahmen & Fotos"]],"timing":[["B-01: Dauer Selbsttest gesamt","B_total",["B-01","B-02","B-03"]],["B-01: Motor nach hinten (bis Anschlag)","B_motor",["B-01","B-02","B-03"]],["C-01: Auslösen bis Sirene","C_sirene",["C-01","C-04","C-11","E-03"]],["C-02: Loslassen bis gelb","C_gelb",["C-02","C-05","C-11"]],["C-02: gelb (Motor zurück), Dauer","C_gelbdauer",["C-02","C-05","C-11"]],["C-02: Loslassen bis LED aus","C_aus",["C-02","C-05","C-11"]]],"errclasses":[["A","Kritisch (Sicherheit)","Alarm wird nicht ausgelöst. Motor läuft ohne Alarm oder hört nicht mehr auf. Gerät geht während eines Alarms aus bzw. startet neu. Gerät lässt sich nicht mehr bedienen."],["B","Hoch","Quittierung funktioniert nicht oder erst nach mehreren Versuchen. Sirene bleibt nach der Quittierung an. Selbsttest meldet Fehler bei intaktem Gerät. Laden funktioniert nicht."],["C","Mittel","Falsche LED-Farbe oder -Muster. Zeiten deutlich außerhalb der Angaben. Ansage fehlt."],["D","Gering","Kosmetisches, z. B. kurzes Flackern, leiser Ton, uneinheitliche Helligkeit."]],"led":[["1","Gelb dauerhaft","–","Motor fährt nach einer Quittierung zurück in die Ausgangslage.","#f5c400"],["2","Rot, schnell blinkend","–","Alarm quittiert, Gerät wartet, bis beide Controller fertig sind (bis ca. 20 s ab Auslösung).","#e5383b"],["3","Weiß, schnell blinkend","Sirene (Dauerschleife), ca. 1 s nach LED","ALARM aktiv. Motor läuft vor.","#ffffff"],["4","Rot, schnell blinkend, 5 s","Ansage nach dem Reset","Reset abgeschlossen.","#e5383b"],["5","Rot, schnell blinkend, 20 s","„Temperatur zu hoch“ / „zu niedrig“","Akkutemperatur außerhalb des zulässigen Bereichs.","#e5383b"],["6","Gelb blinkend (langsam)","–","Laden, Akku unter 80 %.","#f5c400"],["6","Grün blinkend (langsam)","–","Laden, Akku 80 bis 98 %.","#2ecc71"],["6","Grün dauerhaft","–","Laden, Akku voll.","#2ecc71"],["–","Cyan, gedimmt","–","Taster ist gedrückt (in jedem Zustand).","#22d3ee"],["–","Blau blinkend","–","Selbsttest läuft.","#3b82f6"],["–","5× grün blinken","Ansage „Bereit“","Selbsttest bestanden.","#2ecc71"],["–","5× rot/gelb blinken","Ansage zur Ursache","Selbsttest mit Warnung (Akku niedrig oder Temperatur).","#f59e0b"],["–","Rot dauerhaft, ca. 5 s","–","Selbsttest fehlgeschlagen (Hardware-Fehler).","#e5383b"],["–","Aus","–","Ruhe bzw. Schlaf (nach ca. 5 s ohne Bedienung).","#555555"]],"soll_alarm":["Auslösen: LED weiß blinkend, Motor läuft vor, nach ca. 1 s Sirene.","Ohne Quittierung: Sirene und weißes Blinken bleiben an. Motor hört nach spätestens ca. 20 s auf.","Taster drücken (Cyan) und loslassen: Sirene sofort aus, LED rot blinkend.","LED gelb dauerhaft: Motor fährt zurück, bis er hinten anschlägt (wenige Sekunden).","LED 5 s rot blinkend, Ansage nach dem Reset.","Danach LED aus. Nach ca. 5 s ohne Bedienung Schlaf."],"soll_st":["Taster kurz drücken und loslassen (kein Alarm aktiv): LED blau blinkend.","Nach ca. 2 s interne Prüfungen (nicht sichtbar).","Motor hinten bis Anschlag (ca. 3–10 s), Pause ca. 2 s, dann ca. 5 s vor in die Mitte.","Ergebnis: 5× grün + „Bereit“, bzw. Warnung oder Fehler laut LED-Tabelle.","Gesamtdauer typisch ca. 15–40 s."],"rules":["Jeden Testfall einzeln durchführen und sofort eintragen: OK oder NOK, dazu die beobachteten Zeiten.","Bei jedem Ablauf läuft das Video automatisch mit (Dateiname Testfall-ID_Datum_Uhrzeit).","Ein Fehler, der nur einmal auftritt, ist trotzdem ein Fehler → Testfall 3× wiederholen, Häufigkeit wird automatisch gezählt.","Zwischen zwei Alarmen mindestens bis „LED aus“ warten, außer der Testfall verlangt etwas anderes.","Gerät geht von selbst aus, startet neu oder reagiert nicht mehr → sofort Fehlerbericht Klasse A.","Nichts „reparieren“: Gerät im fehlerhaften Zustand lassen, Video weiterlaufen lassen, dann erst weiter."],"fw":{"fw_uc1":"U073CC_FW V02R09","fw_uc2":"U031_FW V02R11","bl_uc1":"U073CC_BL V01R05"},"protocol":"Testprotokoll Extern UC1 V02R09"};
 const TESTS = TC.tests, BYID = Object.fromEntries(TESTS.map(t => [t.id, t]));
 const CHNAME = Object.fromEntries(TC.chapters);
 const $ = id => document.getElementById(id);
@@ -370,7 +400,8 @@ async function uploadLarge(folder, name, blob, onProgress) {
 
 /* ================= Upload-Warteschlange (nur RAM; bei Problemen IndexedDB-Sicherung) ================= */
 const Q = []; let qBusy = false, qBytes = 0, qProg = "";
-function enqueue(job) { Q.push(job); qBytes += job.blob.size; updUp(); pumpQueue(); }
+let DEMO = false;
+function enqueue(job) { if (DEMO) return; Q.push(job); qBytes += job.blob.size; updUp(); pumpQueue(); }
 function updUp() {
   const n = Q.length + (qBusy ? 0 : 0);
   const mb = (qBytes / 1048576).toFixed(1);
@@ -398,7 +429,7 @@ async function pumpQueue() {
   } finally { qBusy = false; updUp(); if (Q.length && !Q[0].failed) pumpQueue(); }
 }
 window.addEventListener("online", pumpQueue);
-window.addEventListener("beforeunload", e => { if (Q.length || REC) { e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("beforeunload", e => { if (Q.length || (REC && !DEMO) || FINALIZING) { e.preventDefault(); e.returnValue = ""; } });
 // IndexedDB
 function idb() { return new Promise((res, rej) => { const r = indexedDB.open("am_q", 1); r.onupgradeneeded = () => r.result.createObjectStore("q", { keyPath: "k" }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
 async function idbPut(job) { const db = await idb(); const k = job.sessFolder.id + "/" + job.name; await new Promise((res, rej) => { const tx = db.transaction("q", "readwrite"); tx.objectStore("q").put({ k, name: job.name, blob: job.blob, sessFolder: job.sessFolder, sub: job.sub || "Videos" }); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); return k; }
@@ -419,8 +450,9 @@ function newSession(meta) {
 }
 function log(tid, action, obs = "", video = "") { const d = new Date(); S.log.push({ date: `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`, time: `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`, test: tid, action, obs, video }); }
 let saveT = null, saving = false, saveAgain = false;
-function save(now) { LS.set("am_sess_" + SF.id, S); clearTimeout(saveT); saveT = setTimeout(doSave, now ? 0 : 1500); }
+function save(now) { if (DEMO || !SF) return; LS.set("am_sess_" + SF.id, S); clearTimeout(saveT); saveT = setTimeout(doSave, now ? 0 : 1500); }
 async function doSave() {
+  if (DEMO || !SF || !S) return;
   if (saving) { saveAgain = true; return; }
   saving = true;
   try { await putSmall(SF, "sitzung.json", JSON.stringify(S, null, 1), "application/json"); $("hStatus").dataset.saved = "1"; }
@@ -532,24 +564,49 @@ function pickMime() {
   for (const m of c) if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
   return "";
 }
+/* Video fertigstellen: Browser-Aufnahmen (fragmentiertes MP4/WebM) ohne Neukodierung in eine normale MP4
+   mit korrekter Gesamtdauer umpacken – damit zeigen Windows & Co. die richtige Laenge und koennen spulen. */
+let FINALIZING = 0;
+function updFin() { const b = $("finBox"); if (!b) return; b.classList.toggle("hidden", !FINALIZING); b.textContent = `⚙ Video wird fertiggestellt … (${FINALIZING})`; }
+async function finalizeVideo(blob) {
+  if (!window.Mediabunny) return { blob, fixed: false };
+  FINALIZING++; updFin();
+  try {
+    const M = window.Mediabunny;
+    const input = new M.Input({ source: new M.BlobSource(blob), formats: M.ALL_FORMATS });
+    const output = new M.Output({ format: new M.Mp4OutputFormat({ fastStart: "in-memory" }), target: new M.BufferTarget() });
+    const conv = await M.Conversion.init({ input, output });
+    if (!conv.isValid) return { blob, fixed: false };
+    await conv.execute();
+    return { blob: new Blob([output.target.buffer], { type: "video/mp4" }), fixed: true };
+  } catch (e) { console.warn("finalize", e); return { blob, fixed: false }; }
+  finally { FINALIZING--; updFin(); }
+}
+const MAX_REC_MIN = 30;   // Sicherheitsgrenze fuer den Arbeitsspeicher; laengere Aufnahmen -> Zeitraffer verwenden
 class SegRecorder {
-  // nimmt in Segmenten auf; jedes fertige Segment geht sofort in die Upload-Warteschlange und verlaesst den RAM
+  // EIN durchgehendes Video pro Lauf. Erst nach MAX_REC_MIN Minuten wird (zum Schutz des Speichers) eine Fortsetzung begonnen.
   constructor(baseName, sessFolder, onSeg) {
     this.baseName = baseName; this.sf = sessFolder; this.onSeg = onSeg; this.part = 0; this.t0 = performance.now();
-    this.mime = pickMime(); this.ext = this.mime.includes("mp4") ? "mp4" : "webm";
+    this.mime = pickMime(); this.ext = "mp4";
     this.bps = CFG.quality === "1080p" ? 4000000 : (CFG.quality === "480p" ? 1000000 : 2000000);
     this.names = []; this._start();
-    this.segT = setInterval(() => this.rotate(), CFG.segSec * 1000);
+    this.segT = setInterval(() => { toast(`Aufnahme läuft seit ${MAX_REC_MIN} min – es wird eine Fortsetzungsdatei begonnen. Für lange Tests bitte ⏩ Zeitraffer nutzen.`, 8000); this.rotate(); }, MAX_REC_MIN * 60000);
   }
   elapsed() { return (performance.now() - this.t0) / 1000; }
   _start() {
     this.part++;
-    const name = this.part === 1 ? `${this.baseName}.${this.ext}` : `${this.baseName}_teil${this.part}.${this.ext}`;
+    const name = this.part === 1 ? `${this.baseName}.${this.ext}` : `${this.baseName}_Fortsetzung${this.part}.${this.ext}`;
     this.names.push(name);
     const chunks = [];
     const mr = new MediaRecorder(OUT, { mimeType: this.mime || undefined, videoBitsPerSecond: this.bps, audioBitsPerSecond: 128000 });
     mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-    mr.onstop = () => { const blob = new Blob(chunks, { type: this.mime || "video/webm" }); chunks.length = 0; if (blob.size) enqueue({ name, blob, sessFolder: this.sf }); this.onSeg && this.onSeg(name); };
+    mr.onstop = async () => {
+      const raw = new Blob(chunks, { type: this.mime || "video/webm" }); chunks.length = 0;
+      if (!raw.size) return;
+      const { blob, fixed } = await finalizeVideo(raw);
+      enqueue({ name, blob, sessFolder: this.sf });
+      this.onSeg && this.onSeg(name, fixed);
+    };
     mr.start(1000); this.mr = mr;
   }
   rotate() { const old = this.mr; this._start(); old.stop(); }
@@ -565,6 +622,10 @@ async function setupCamCaps() {
   if (caps.zoom && caps.zoom.max > caps.zoom.min) { CAM.digital = false; CAM.min = caps.zoom.min; CAM.max = Math.min(caps.zoom.max, 10); CAM.zoom = Math.max(CAM.min, Math.min(CAM.max, (tr.getSettings().zoom || 1))); }
   else { CAM.digital = true; CAM.min = 1; CAM.max = 4; CAM.zoom = 1; }
   CAM.torchOk = !!caps.torch; CAM.torch = false;
+  const st0 = tr.getSettings ? tr.getSettings() : {};
+  await detectTLCodec(st0.width || vid.videoWidth || 1280, st0.height || vid.videoHeight || 720);
+  if (CFG.tl && !TL_CODEC) { CFG.tl = 0; saveCfg(); }
+  renderTL();
   CAM.flashOk = false;
   try { if (window.ImageCapture) { const pc = await new ImageCapture(tr).getPhotoCapabilities(); CAM.flashOk = (pc.fillLightMode || []).includes("flash"); } } catch {}
   renderCamBar();
@@ -596,7 +657,8 @@ async function renderCamList() {
   try { devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "videoinput"); } catch {}
   const curId = vtrack() ? vtrack().getSettings().deviceId : "";
   $("camList").innerHTML = devs.length ? devs.map((d, i) => { const l = d.label || `Kamera ${i + 1}`; const front = /front|user|vorne/i.test(l);
-    return `<button data-id="${esc(d.deviceId)}" class="${d.deviceId === curId ? "on" : ""}">${front ? "🤳" : "📷"} ${esc(l)}${front ? " (vorne)" : ""}</button>`; }).join("") : "Keine Kameraliste verfügbar.";
+    const wide = /ultra|wide|weit/i.test(l);
+    return `<button data-id="${esc(d.deviceId)}" class="${d.deviceId === curId ? "on" : ""}">${front ? "🤳" : wide ? "🌄" : "📷"} ${esc(l)}${front ? " (vorne)" : wide ? " (Weitwinkel)" : ""}</button>`; }).join("") : "Keine Kameraliste verfügbar.";
 }
 $("camList").addEventListener("click", async e => { const b = e.target.closest("button"); if (!b) return; if (RUN) { toast("Während einer Aufnahme nicht möglich."); return; } CFG.deviceId = b.dataset.id; saveCfg(); await openCamera(); renderCamList(); });
 $("zoomChips").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setZoom(+b.dataset.z); });
@@ -645,11 +707,112 @@ async function takePhoto() {
     if (RUN) { const el = Math.round(REC.elapsed() * 100) / 100; RUN.markers.push({ label: "📷 Foto", t: el }); info.marker = "Foto"; info.markerWall = Date.now(); }
     log(tid, "Foto", title, name); save();
     const f = $("flash"); f.style.transition = "none"; f.style.opacity = 1; requestAnimationFrame(() => requestAnimationFrame(() => { f.style.transition = "opacity .35s"; f.style.opacity = 0; }));
-    vibrate(30); toast("📷 Foto gespeichert – wird hochgeladen."); render();
+    vibrate(30); toast(DEMO ? "📷 Foto (Testmodus – nicht gespeichert)" : "📷 Foto gespeichert – wird hochgeladen."); render();
   } catch (e) { toast("Foto fehlgeschlagen: " + e.message, 6000); }
   finally { photoBusy = false; }
 }
 $("bPhoto").onclick = takePhoto;
+
+/* ================= Zeitraffer (WebCodecs + mp4-muxer) ================= */
+let TL_CODEC = null;   // {codec, muxCodec}
+async function detectTLCodec(w, h) {
+  TL_CODEC = null;
+  if (!(window.VideoEncoder && window.VideoFrame && window.Mp4Muxer)) return null;
+  w = w & ~1; h = h & ~1;
+  const cands = [["avc1.640028", "avc"], ["avc1.4d0028", "avc"], ["avc1.42e028", "avc"], ["avc1.42001f", "avc"], ["vp09.00.40.08", "vp9"], ["vp09.00.10.08", "vp9"]];
+  for (const [codec, muxCodec] of cands) {
+    try { const r = await VideoEncoder.isConfigSupported({ codec, width: w, height: h, bitrate: 4000000, framerate: 30 }); if (r.supported) { TL_CODEC = { codec, muxCodec }; return TL_CODEC; } } catch {}
+  }
+  return null;
+}
+class TLRecorder {
+  // Zeitraffer: alle `interval` s ein Bild, Wiedergabe mit 30 Bildern/s; Segmente zu je 900 Bildern (30 s Video)
+  constructor(baseName, sessFolder, onSeg, interval) {
+    this.baseName = baseName; this.sf = sessFolder; this.onSeg = onSeg; this.interval = interval;
+    this.t0 = performance.now(); this.part = 0; this.names = []; this.perSeg = 7200; this.ext = "mp4";
+    this._newSeg();
+    setTimeout(() => this.frame(), 80);
+    this.timer = setInterval(() => this.frame(), interval * 1000);
+  }
+  elapsed() { return (performance.now() - this.t0) / 1000; }
+  _newSeg() {
+    this.part++;
+    const name = this.part === 1 ? `${this.baseName}_Zeitraffer.mp4` : `${this.baseName}_Zeitraffer_Fortsetzung${this.part}.mp4`;
+    this.names.push(name);
+    const w = cv.width & ~1, h = cv.height & ~1;
+    const target = new Mp4Muxer.ArrayBufferTarget();
+    const muxer = new Mp4Muxer.Muxer({ target, video: { codec: TL_CODEC.muxCodec, width: w, height: h, frameRate: 30 }, fastStart: "in-memory", firstTimestampBehavior: "offset" });
+    const enc = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: e => toast("Zeitraffer-Fehler: " + e.message, 6000) });
+    enc.configure({ codec: TL_CODEC.codec, width: w, height: h, bitrate: 4000000, framerate: 30 });
+    this.cur = { name, muxer, target, enc, n: 0, w, h };
+  }
+  frame() {
+    const c = this.cur; if (!c) return;
+    try {
+      if ((cv.width & ~1) !== c.w || (cv.height & ~1) !== c.h) { this.rotate(); return; }
+      const vf = new VideoFrame(cv, { timestamp: Math.round(c.n * 1e6 / 30), duration: Math.round(1e6 / 30) });
+      c.enc.encode(vf, { keyFrame: c.n % 30 === 0 }); vf.close(); c.n++;
+      if (c.n >= this.perSeg) this.rotate();
+    } catch (e) { toast("Zeitraffer-Bild fehlgeschlagen: " + e.message); }
+  }
+  async _finish(c) {
+    try {
+      if (!c.n) return;
+      await c.enc.flush(); c.enc.close(); c.muxer.finalize();
+      const blob = new Blob([c.target.buffer], { type: "video/mp4" });
+      enqueue({ name: c.name, blob, sessFolder: this.sf });
+      this.onSeg && this.onSeg(c.name, true);
+    } catch (e) { toast("Zeitraffer speichern fehlgeschlagen: " + e.message, 8000); }
+  }
+  rotate() { const old = this.cur; this._newSeg(); this._finish(old); }
+  stop() { clearInterval(this.timer); const old = this.cur; this.cur = null; if (old && !old.n) { this.frame.call({ cur: old }); } this._finish(old); return this.names.filter((n, i) => i < this.names.length); }
+}
+const TL_STEPS = [0, 1, 2, 5, 10, 30, 60];
+function renderTL() {
+  const v = CFG.tl || 0;
+  $("bTL").textContent = v ? `⏩ Zeitraffer ${v} s` : "⏩ Zeitraffer aus"; $("bTL").classList.toggle("on", !!v);
+  $("cTL").value = String(v);
+}
+function setTL(v) {
+  if (RUN) { toast("Während einer Aufnahme nicht änderbar."); renderTL(); return; }
+  if (v && !TL_CODEC) { toast("Zeitraffer wird von diesem Browser nicht unterstützt – bitte Chrome bzw. Safari aktualisieren."); v = 0; }
+  CFG.tl = v; saveCfg(); renderTL();
+  if (v) toast(`⏩ Zeitraffer: 1 Bild alle ${v} s – gilt für die nächste Aufnahme.`);
+}
+$("bTL").onclick = () => { const i = TL_STEPS.indexOf(CFG.tl || 0); setTL(TL_STEPS[(i + 1) % TL_STEPS.length]); };
+$("cTL").onchange = e => setTL(+e.target.value);
+
+/* ================= Kamera-Test mit Vorschaubildern (Weitwinkel finden) ================= */
+async function probeCameras() {
+  if (RUN) { toast("Während einer Aufnahme nicht möglich."); return; }
+  $("probeOut").innerHTML = '<div class="muted">Teste Kameras … (dauert ein paar Sekunden)</div>';
+  let devs = [];
+  try { devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "videoinput"); } catch {}
+  if (STREAM) STREAM.getVideoTracks().forEach(t => t.stop());
+  const res = [];
+  for (const [i, d] of devs.entries()) {
+    let st = null;
+    try {
+      st = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: d.deviceId }, width: { ideal: 640 } }, audio: false });
+      const v = document.createElement("video"); v.muted = true; v.playsInline = true; v.srcObject = st; await v.play();
+      await new Promise(r => setTimeout(r, 600));
+      const c = document.createElement("canvas"); c.width = 320; c.height = Math.round(320 * (v.videoHeight || 240) / (v.videoWidth || 320));
+      c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+      let caps = {}; try { caps = st.getVideoTracks()[0].getCapabilities(); } catch {}
+      res.push({ id: d.deviceId, label: d.label || `Kamera ${i + 1}`, img: c.toDataURL("image/jpeg", 0.7), zoom: caps.zoom, torch: !!caps.torch });
+    } catch (e) { res.push({ id: d.deviceId, label: (d.label || `Kamera ${i + 1}`) + " – nicht nutzbar", img: "", err: true }); }
+    finally { if (st) st.getTracks().forEach(t => t.stop()); }
+  }
+  const curId = CFG.deviceId || "";
+  $("probeOut").innerHTML = res.map(r => `<button data-id="${esc(r.id)}" class="${r.id === curId ? "on" : ""}" ${r.err ? "disabled" : ""}>${r.img ? `<img src="${r.img}">` : ""}<b>${/ultra|wide|weit/i.test(r.label) ? "🌄 " : ""}${esc(r.label)}</b>${r.zoom ? `<br>Zoom ${fmtZ(r.zoom.min)}–${fmtZ(r.zoom.max)}×` : ""}${r.torch ? " · 🔦" : ""}</button>`).join("");
+  const back = res.filter(r => !r.err && !/front|user|vorne/i.test(r.label)).length;
+  $("camHint").textContent = back <= 1
+    ? "Dein Handy gibt im Browser nur eine Rückkamera frei. Viele Android-Handys (z. B. Samsung) erlauben die Weitwinkel-Kamera nur der eigenen Kamera-App – dann geht Weitwinkel hier leider nicht. Abhilfe: Clip-on-Weitwinkellinse oder iPhone (dort ist die Ultra-Weitwinkel-Kamera wählbar)."
+    : "Tippe auf das Bild mit dem größten Bildausschnitt – das ist die Weitwinkel-Kamera.";
+  await openCamera();
+}
+$("cProbe").onclick = probeCameras;
+$("probeOut").addEventListener("click", async e => { const b = e.target.closest("button"); if (!b) return; if (RUN) { toast("Während einer Aufnahme nicht möglich."); return; } CFG.deviceId = b.dataset.id; saveCfg(); await openCamera(); document.querySelectorAll("#probeOut button").forEach(x => x.classList.toggle("on", x === b)); renderCamList(); toast("Kamera gewechselt."); });
 
 /* ================= Laeufe ================= */
 let CUR = TESTS[0].id, REC = null, RUN = null, RUN_TID = null, beeped = false;
@@ -663,8 +826,11 @@ function startRecording(tid, title = "") {
   const run = { n, start: nowIso(), end: "", result: null, markers: [], note: "", video: "", videos: [], source: "android" };
   if (title) run.title = title;
   td.runs.push(run);
-  info = { title: `AirMate ONE | ${title ? "FREI: " + title : tid + " Lauf " + n} | SN ${S.meta.sn || ""}`, marker: null, markerWall: 0 };
-  const rec = new SegRecorder(vb, SF, name => { if (!run.videos.includes(name)) run.videos.push(name); run.video = run.videos[0]; save(); });
+  info = { title: `${DEMO ? "TESTMODUS | " : ""}AirMate ONE | ${title ? "FREI: " + title : tid + " Lauf " + n} | SN ${S.meta.sn || ""}`, marker: null, markerWall: 0 };
+  const onSeg = (name, fixed) => { if (!run.videos.includes(name)) run.videos.push(name); run.video = run.videos[0]; if (fixed && run.videos.length === 1) run.fixed = true; save(); };
+  const tl = (CFG.tl && TL_CODEC) ? CFG.tl : 0;
+  if (tl) { run.timelapse = tl; info.title += ` | ZEITRAFFER 1 Bild/${tl}s`; }
+  const rec = tl ? new TLRecorder(vb, SF, onSeg, tl) : new SegRecorder(vb, SF, onSeg);
   run.video = rec.names[0]; run.videos = rec.names.slice();
   log(tid, title ? `Freie Aufnahme ${n} gestartet: ${title}` : `Lauf ${n} gestartet`, "", run.video); recompute(tid); save();
   return { run, rec };
@@ -797,10 +963,18 @@ setInterval(() => {
   if (!S) return;
   if (REC) {
     const el = REC.elapsed(); $("sw").textContent = fmtSw(el);
-    const tm = BYID[RUN_TID].timer;
-    $("timerbar").firstElementChild.style.width = tm ? Math.min(100, 100 * el / tm) + "%" : "0";
-    if (tm && el >= tm && !beeped) { beeped = true; vibrate([200, 100, 200]); toast(`⏱ Beobachtungszeit ${tm} s erreicht – jetzt bewerten.`); }
-  } else $("timerbar").firstElementChild.style.width = "0";
+    const td0 = BYID[RUN_TID], tm = td0.timer, tt = $("tmrTxt");
+    if (tm) {
+      let ref = 0, armed = true;
+      if (td0.timer_from) { const mk = RUN.markers.find(m => m.label === td0.timer_from); armed = !!mk; ref = mk ? mk.t : 0; }
+      const el2 = armed ? Math.max(0, el - ref) : 0;
+      $("timerbar").firstElementChild.style.width = Math.min(100, 100 * el2 / tm) + "%";
+      tt.classList.remove("hidden");
+      if (!armed) { tt.textContent = `⏱ ${tm} s – startet bei „${td0.timer_from}“`; tt.classList.remove("over"); }
+      else { const rest = tm - el2; tt.textContent = rest > 0 ? `⏱ noch ${rest.toFixed(1).replace(".", ",")} s` : `⏱ ${tm} s abgelaufen`; tt.classList.toggle("over", rest <= 0); }
+      if (armed && el2 >= tm && !beeped) { beeped = true; vibrate([200, 100, 200]); toast(`⏱ ${tm} s erreicht${td0.timer_from ? " (ab „" + td0.timer_from + "“)" : ""} – jetzt bewerten.`); }
+    } else { $("timerbar").firstElementChild.style.width = "0"; tt.classList.add("hidden"); }
+  } else { $("timerbar").firstElementChild.style.width = "0"; $("tmrTxt").classList.add("hidden"); }
 }, 50);
 
 /* ================= Sheets ================= */
@@ -878,6 +1052,52 @@ function renderErrList() {
 }
 $("errListBody").addEventListener("click", e => { const b = e.target.closest("button"); if (b) openErrorForm(+b.dataset.i); });
 
+/* ================= Kurzprotokoll ================= */
+function kpHtml(full) {
+  const m = S.meta, c = counts(), done = c.ok + c.nok + c.skip;
+  const ec = { A: 0, B: 0, C: 0, D: 0 }; S.errors.forEach(e => { if (ec[e.klasse] != null) ec[e.klasse]++; });
+  const f1 = v => String(v.toFixed(1)).replace(".", ",");
+  const rows = REAL.filter(t => T(t.id).runs.length || T(t.id).skipped).map(t => {
+    const td = T(t.id), res = { ok: "OK", nok: "NOK", skip: "übersprungen", partial: "läuft", open: "offen" }[td.status];
+    const vals = t.measures.map(sp => { const v = td.runs.map(r => measureValue(r, sp)).filter(x => x != null); return v.length ? `${esc(sp[1])}: ${v.map(f1).join(", ")} s` : ""; }).filter(Boolean);
+    const [n, tot] = frequency(t.id); if (n) vals.push(`Fehler ${n} von ${tot}`);
+    const nv = td.runs.filter(r => r.video).length;
+    const col = res === "OK" ? "#1e9e5a" : res === "NOK" ? "#d92d3a" : "#8a96a8";
+    const st = t.steps.length > 90 ? t.steps.slice(0, 87) + " …" : t.steps;
+    return `<tr><td><b>${t.id}</b></td><td>${esc(st)}</td><td style="color:${col};font-weight:700">${res}</td><td>${vals.join("<br>")}</td><td>${nv || "–"}</td></tr>`;
+  }).join("");
+  const errs = S.errors.map(e => `<tr><td>${e.nr}</td><td>${esc(e.test)}</td><td><b>${esc(e.klasse || "?")}</b></td><td>${esc(e.kurz || "")}</td><td>${e.haeufig_n || ""} von ${e.haeufig_von || ""}</td></tr>`).join("");
+  const free = T("FREI").runs, ph = (S.photos || []).length;
+  const body = `<h1 style="font-size:22px;margin:0">Kurzprotokoll AirMate ONE</h1>
+  <div style="color:#5b6b82;margin-bottom:8px">SN <b>${esc(m.sn)}</b> · Testprotokoll UC1 V02R09${m.demo ? " · TESTMODUS" : ""}</div>
+  <table><tr><th>Tester</th><td>${esc([m.tester, m.firma].filter(Boolean).join(", "))}</td></tr>
+  <tr><th>Beginn</th><td>${esc((m.created || "").replace("T", " "))}</td></tr>
+  <tr><th>Ort / Temperatur</th><td>${esc([m.ort, m.temp].filter(Boolean).join(", "))}</td></tr>
+  <tr><th>Firmware</th><td>UC1 ${esc(m.fw_uc1)} · UC2 ${esc(m.fw_uc2)} · BL ${esc(m.bl_uc1)}</td></tr>
+  <tr><th>Seriennummer erfasst</th><td>${esc(m.sn_quelle || "manuell")}</td></tr></table>
+  <p><b>${done} von ${REAL.length} Testfällen erledigt – ${c.ok} OK, ${c.nok} NOK, ${c.skip} übersprungen, ${c.open + c.partial} offen.</b><br>Fehlerberichte: A ${ec.A} · B ${ec.B} · C ${ec.C} · D ${ec.D}</p>
+  <h3 style="margin:10px 0 4px">Durchgeführte Tests</h3>
+  ${rows ? `<table><tr><th>ID</th><th>Prüfung</th><th>Ergebnis</th><th>Messwerte</th><th>Videos</th></tr>${rows}</table>` : "<p>Noch keine Tests durchgeführt.</p>"}
+  ${errs ? `<h3 style="margin:10px 0 4px">Fehlerberichte</h3><table><tr><th>Nr.</th><th>Test</th><th>Klasse</th><th>Beschreibung</th><th>Häufigkeit</th></tr>${errs}</table>` : ""}
+  ${free.length || ph ? `<h3 style="margin:10px 0 4px">Zusätzliche Dokumentation</h3><p>${free.length} freie Aufnahme(n), ${ph} Foto(s).</p><ul>${free.map(r => `<li>${esc(r.title || "Freie Aufnahme")}${r.note ? " – " + esc(r.note) : ""}</li>`).join("")}</ul>` : ""}
+  <p style="color:#8a96a8;font-size:11px">Erstellt ${new Date().toLocaleString("de-AT")} mit der AirMate ONE Testbench (Handy)</p>`;
+  if (!full) return body;
+  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kurzprotokoll ${esc(m.sn)}</title>
+  <style>body{font:14px/1.4 system-ui,Segoe UI,Roboto,sans-serif;color:#1d2433;max-width:900px;margin:20px auto;padding:0 16px}table{width:100%;border-collapse:collapse;margin:6px 0}td,th{border:1px solid #dde3ea;padding:5px 7px;text-align:left;vertical-align:top}th{background:#eef3fa}@media print{body{margin:0}}</style></head><body>${body}
+  <p style="margin-top:40px">Datum, Unterschrift Tester: ____________________________</p><p style="margin-top:24px">Datum, Unterschrift Auftraggeber: ______________________</p></body></html>`;
+}
+async function saveKP(silent) {
+  if (DEMO || !SF) { if (!silent) toast("Im Testmodus wird nichts gespeichert."); return; }
+  const d = new Date(), stamp = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+  const name = `Kurzprotokoll_SN-${safeName(S.meta.sn)}_${stamp}.html`;
+  await putSmall(SF, name, kpHtml(true), "text/html");
+  log("—", "Kurzprotokoll gespeichert", name); save();
+  if (!silent) toast("☁ Kurzprotokoll in OneDrive gespeichert.");
+}
+$("mKP").onclick = () => { closeSheets(); $("kpBody").innerHTML = kpHtml(false); openSheet("sKP"); };
+$("kpClose").onclick = closeSheets;
+$("kpSave").onclick = async () => { try { await saveKP(false); } catch (e) { toast("Speichern fehlgeschlagen: " + e.message, 6000); } };
+
 /* ================= Event-Handler ================= */
 $("bStart").onclick = () => startRun();
 $("bOk").onclick = () => rate("OK");
@@ -888,14 +1108,24 @@ $("bAbort").onclick = async () => { const r = await ask("Lauf abbrechen?", "Das 
 $("bPrev").onclick = () => step(-1);
 $("bNext").onclick = () => step(1);
 $("bList").onclick = () => { renderList(); openSheet("sList"); setTimeout(() => { const c = document.querySelector("#listBody .cur"); c && c.scrollIntoView({ block: "center" }); }, 30); };
-$("bMenu").onclick = () => { $("menuInfo").textContent = `${SF.name} · SN ${S.meta.sn} · ${S.meta.tester}`; $("qualTxt").textContent = CFG.quality; openSheet("sMenu"); };
+$("bMenu").onclick = () => { $("menuInfo").textContent = `${SF ? SF.name : "🧪 Testmodus"} · SN ${S.meta.sn} · ${S.meta.tester}`; $("qualTxt").textContent = CFG.quality; openSheet("sMenu"); };
 $("mRef").onclick = () => { closeSheets(); renderRef(); openSheet("sRef"); };
 $("mErr").onclick = () => { closeSheets(); renderErrList(); openSheet("sErrList"); };
 $("bErrNew").onclick = () => openErrorForm(null, CUR, viewRun());
 $("mQual").onclick = async () => { if (RUN) { toast("Während eines Laufs nicht möglich."); return; } const o = ["480p", "720p", "1080p"]; CFG.quality = o[(o.indexOf(CFG.quality) + 1) % 3]; saveCfg(); $("qualTxt").textContent = CFG.quality; await openCamera();
   toast(`Qualität ${CFG.quality} ≈ ${{ "480p": 7.5, "720p": 15, "1080p": 30 }[CFG.quality]} MB pro Minute Upload`); };
 $("mStopNoRate").onclick = () => { closeSheets(); stopNoRate(); };
-$("mClose").onclick = async () => { closeSheets(); if (!(await guardRunning())) return; await doSave(); S = null; showWelcome(); };
+$("mClose").onclick = async () => {
+  closeSheets(); if (!(await guardRunning())) return;
+  if (!DEMO) { await doSave(); try { await saveKP(true); } catch {} }
+  S = null; SF = null; DEMO = false; $("demoBar").classList.add("hidden"); showWelcome();
+};
+$("bDemo").onclick = () => {
+  DEMO = true; SF = null;
+  S = newSession({ sn: $("nSn").value.trim() || "TESTMODUS", tester: $("nTester").value.trim() || "Testmodus", demo: true });
+  $("demoBar").classList.remove("hidden");
+  enterTest(); toast("🧪 Testmodus – nichts wird gespeichert.", 4000);
+};
 $("bFreeMk").onclick = async () => { const r = await ask("Freie Zeitmarke", "", [["Setzen", 1, "background:#1e6fd9;color:#fff"], ["Abbrechen", 0]], "Bezeichnung"); if (r.v && r.text.trim()) setMarker(r.text.trim()); };
 $("bUndoMk").onclick = undoMarker;
 $("bNote").onclick = async () => {
