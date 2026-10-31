@@ -142,9 +142,8 @@ input[type=range]{padding:0;accent-color:#1e6fd9}
         <div class="row"><div><label>Firma</label><input id="nFirma" value="AirMate FlexCo"></div><div><label>Raumtemperatur</label><input id="nTemp" placeholder="22 °C"></div></div>
         <label>Ort</label><input id="nOrt">
         <label>Ladegerät / USB-Quelle</label><input id="nLade">
-        <details><summary class="muted" style="margin-top:8px">Firmware-Stände</summary>
-          <label>Firmware UC1</label><input id="nFw1"><label>Firmware UC2</label><input id="nFw2"><label>Bootloader UC1</label><input id="nBl">
-        </details>
+        <div class="row"><div><label>Firmware MC1 (UC1)</label><input id="nFw1" list="dlFw1"></div><div><label>Firmware MC2 (UC2)</label><input id="nFw2" list="dlFw2"></div></div>
+        <details><summary class="muted" style="margin-top:8px">Bootloader</summary><label>Bootloader UC1</label><input id="nBl" list="dlBl"></details>
         <button id="bNew" style="width:100%;margin-top:12px;background:#1e9e5a;border-color:var(--ok);color:#fff;font-weight:800;padding:14px">Neue Sitzung starten ▶</button>
       </div>
       <div class="card"><div class="ct">SITZUNG FORTSETZEN</div><div id="sessList" class="muted">Lade …</div></div>
@@ -188,6 +187,7 @@ input[type=range]{padding:0;accent-color:#1e6fd9}
       <button id="bCamSheet">⚙ Kamera</button>
     </div>
     <main id="main">
+      <button id="bFw" style="width:100%;margin-bottom:8px;background:#eef3fa;border-color:#9cc0f5;color:#123a7a;font-weight:700;text-align:left">🔧 FW</button>
       <div class="steps"><span id="st0">① Vorbereiten</span><span id="st1">② Testen</span><span id="st2">③ Bewerten</span></div><div id="guide" class="guide"></div><div id="banner"></div>
       <div class="card"><div class="ct">① VORHER HERSTELLEN</div><div id="tPre" class="big"></div></div>
       <div class="card"><div class="ct">② DAS TUST DU</div><div id="tSteps" class="big"></div></div>
@@ -247,6 +247,16 @@ input[type=range]{padding:0;accent-color:#1e6fd9}
 <div id="sKP" class="sheet hidden"><div><h2>Kurzprotokoll</h2><div id="kpBody" class="kp"></div>
   <div class="row" style="margin-top:12px"><button id="kpClose">Schließen</button><button id="kpSave" style="background:#1e6fd9;border-color:#1e6fd9;color:#fff;font-weight:800">☁ In OneDrive speichern</button></div>
 </div></div>
+<div id="sFw" class="sheet hidden"><div><h2>Firmware-Stand</h2>
+  <div class="muted">Wurde der Auslöser neu geflasht? Hier den <b>aktuellen</b> Stand eintragen. Alle folgenden Läufe, Videos und Fehlerberichte werden damit gespeichert; der Wechsel steht im Test-Log und im Protokoll.</div>
+  <label>MC1 – Hauptcontroller (UC1)</label><input id="fwUc1" list="dlFw1" autocomplete="off">
+  <label>MC2 – Zweitcontroller (UC2)</label><input id="fwUc2" list="dlFw2" autocomplete="off">
+  <label>Bootloader UC1</label><input id="fwBl" list="dlBl" autocomplete="off">
+  <label>Grund / Notiz (optional)</label><input id="fwNote" placeholder="z. B. Bugfix Quittierung">
+  <div id="fwHist" class="muted" style="margin-top:8px"></div>
+  <div class="row" style="margin-top:12px"><button id="fwCancel">Abbrechen</button><button id="fwOk" style="background:#1e6fd9;border-color:#1e6fd9;color:#fff;font-weight:800">Übernehmen</button></div>
+</div></div>
+<datalist id="dlFw1"></datalist><datalist id="dlFw2"></datalist><datalist id="dlBl"></datalist>
 <div id="sRef" class="sheet hidden"><div><h2>Referenz</h2><div id="refBody"></div></div></div>
 <div id="sErr" class="sheet hidden"><div><h2 id="errTitle">Fehlerbericht</h2>
   <div id="errBody"></div>
@@ -446,7 +456,8 @@ async function sessVideoFolder(sf, sub = "Videos") { const k = sf.id + "/" + sub
 function newSession(meta) {
   const m = Object.assign({}, TC.fw, meta, { created: nowIso() });
   const tests = {}; TESTS.forEach(t => tests[t.id] = { status: "open", observation: "", runs: [], skipped: false });
-  return { protocol: TC.protocol, source: "android", meta: m, tests, log: [], errors: [], photos: [], verdict: "", verdict_note: "", current: TESTS[0].id };
+  return { protocol: TC.protocol, source: "android", meta: m, tests, log: [], errors: [], photos: [], verdict: "", verdict_note: "", current: TESTS[0].id,
+           fw_history: [{ time: m.created, fw_uc1: m.fw_uc1 || "", fw_uc2: m.fw_uc2 || "", bl_uc1: m.bl_uc1 || "", note: "Sitzungsbeginn" }] };
 }
 function log(tid, action, obs = "", video = "") { const d = new Date(); S.log.push({ date: `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`, time: `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`, test: tid, action, obs, video }); }
 let saveT = null, saving = false, saveAgain = false;
@@ -482,6 +493,7 @@ async function openSession(item) {
   const data = await r.json();
   TESTS.forEach(t => data.tests[t.id] = data.tests[t.id] || { status: "open", observation: "", runs: [], skipped: false });
   data.photos = data.photos || [];
+  if (!data.fw_history || !data.fw_history.length) { const m = data.meta; data.fw_history = [{ time: m.created || "", fw_uc1: m.fw_uc1 || "", fw_uc2: m.fw_uc2 || "", bl_uc1: m.bl_uc1 || "", note: "Sitzungsbeginn" }]; }
   SF = sf; S = data; LS.set("am_last", SF);
 }
 
@@ -825,8 +837,9 @@ function startRecording(tid, title = "") {
   const td = T(tid), n = td.runs.length + 1, vb = videoBase(tid) + (title ? "_" + safeName(title).slice(0, 30) : "");
   const run = { n, start: nowIso(), end: "", result: null, markers: [], note: "", video: "", videos: [], source: "android" };
   if (title) run.title = title;
+  run.fw = curFw();
   td.runs.push(run);
-  info = { title: `${DEMO ? "TESTMODUS | " : ""}AirMate ONE | ${title ? "FREI: " + title : tid + " Lauf " + n} | SN ${S.meta.sn || ""}`, marker: null, markerWall: 0 };
+  info = { title: `${DEMO ? "TESTMODUS | " : ""}AirMate ONE | ${title ? "FREI: " + title : tid + " Lauf " + n} | SN ${S.meta.sn || ""} | FW ${fwShort(run.fw.fw_uc1)}/${fwShort(run.fw.fw_uc2)}`, marker: null, markerWall: 0 };
   const onSeg = (name, fixed) => { if (!run.videos.includes(name)) run.videos.push(name); run.video = run.videos[0]; if (fixed && run.videos.length === 1) run.fixed = true; save(); };
   const tl = (CFG.tl && TL_CODEC) ? CFG.tl : 0;
   if (tl) { run.timelapse = tl; info.title += ` | ZEITRAFFER 1 Bild/${tl}s`; }
@@ -865,7 +878,7 @@ function rate(result) {
   if (BYID[tid].free) { stopFree(); return; }
   let run, oldRec = null;
   if (!RUN) {
-    const td = T(tid); run = { n: td.runs.length + 1, start: nowIso(), end: nowIso(), result, markers: [], note: "", video: "", source: "android" }; td.runs.push(run);
+    const td = T(tid); run = { n: td.runs.length + 1, start: nowIso(), end: nowIso(), result, markers: [], note: "", video: "", source: "android", fw: curFw() }; td.runs.push(run);
   } else { run = RUN; oldRec = REC; }
   run.result = result; log(tid, `Lauf ${run.n} bewertet: ${result}`, "", run.video || ""); recompute(tid);
   const t = BYID[tid], rated = T(tid).runs.filter(r => r.result === "OK" || r.result === "NOK").length, need = repeatsNeeded(tid);
@@ -910,6 +923,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 function select(id) { CUR = id; S.current = id; render(); $("main").scrollTop = 0; }
 function viewRun() { if (RUN && RUN_TID === CUR) return RUN; const r = T(CUR).runs; return r.length ? r[r.length - 1] : null; }
 function render() {
+  renderFw();
   const t = BYID[CUR], td = T(CUR), st = td.status;
   $("hId").textContent = CUR; $("hCh").innerHTML = `Kap. ${t.ch}<br>${esc(CHNAME[t.ch])}`;
   const col = { open: "#8a96a8", partial: "#d98a00", ok: "#1e9e5a", nok: "#d92d3a", skip: "#7a5bd6" }[st];
@@ -1021,7 +1035,7 @@ function openErrorForm(idx, tid, run) {
   const t = BYID[tid], [n, tt] = frequency(tid);
   const e = isNew ? { nr: Math.max(0, ...S.errors.map(x => x.nr || 0)) + 1, datetime: (() => { const d = new Date(); return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; })(),
     test: tid, klasse: "", kurz: "", vorher: t.pre, schritte: `1. Vorbedingung: ${t.pre}\n2. ${t.steps}`, erwartet: t.exp, tatsaechlich: T(tid).observation || "",
-    haeufig_n: n, haeufig_von: tt, haeufig_art: freqArt(tid), beendet: "", video: run ? (run.video || "") : "" } : Object.assign({}, S.errors[idx]);
+    haeufig_n: n, haeufig_von: tt, haeufig_art: freqArt(tid), beendet: "", video: run ? (run.video || "") : "", fw: (run && run.fw) || curFw() } : Object.assign({}, S.errors[idx]);
   $("errTitle").textContent = `Fehlerbericht Nr. ${e.nr} – ${e.test}`;
   const kc = { A: "#d92d3a", B: "#e8590c", C: "#c99700", D: "#8a96a8" };
   $("errBody").innerHTML = `<label>Wie schlimm?</label><div class="kl">${TC.errclasses.map(([k, nm]) => `<button data-k="${k}" style="color:${kc[k]};border-color:${kc[k]}" class="${e.klasse === k ? "sel" : ""}">${k}<br><small>${esc(nm.split(" ")[0])}</small></button>`).join("")}</div>
@@ -1052,6 +1066,50 @@ function renderErrList() {
 }
 $("errListBody").addEventListener("click", e => { const b = e.target.closest("button"); if (b) openErrorForm(+b.dataset.i); });
 
+/* ================= Firmware-Stand (MC1/MC2) ================= */
+const fwShort = v => { v = String(v || "").trim(); return v ? v.split(/\s+/).pop() : "?"; };
+const curFw = () => ({ fw_uc1: S.meta.fw_uc1 || "", fw_uc2: S.meta.fw_uc2 || "", bl_uc1: S.meta.bl_uc1 || "" });
+function fwCombos() { const seen = new Set(), out = []; (S.fw_history || []).forEach(h => { const k = [h.fw_uc1, h.fw_uc2, h.bl_uc1].join("|"); if (!seen.has(k)) { seen.add(k); out.push(h); } }); return out; }
+const multiFw = () => fwCombos().length > 1;
+function fwList(key) {
+  const out = []; let last = null;
+  (S.fw_history || []).forEach(h => { const v = h[key] || ""; if (v && v !== last) { out.push([v, h.time || ""]); last = v; } });
+  if (out.length <= 1) return out.length ? out[0][0] : (S.meta[key] || "");
+  return out.map(([v, t]) => `${v} (ab ${t.replace("T", " ").slice(0, 16)})`).join("  →  ");
+}
+function fillFwLists() {
+  const rec = LS.get("am_fw_recent", {});
+  [["dlFw1", "fw_uc1"], ["dlFw2", "fw_uc2"], ["dlBl", "bl_uc1"]].forEach(([id, k]) => {
+    const vals = new Set([...(rec[k] || []), TC.fw[k], ...((S && S.fw_history) || []).map(h => h[k])].filter(Boolean));
+    $(id).innerHTML = [...vals].map(v => `<option value="${esc(v)}">`).join("");
+  });
+}
+function rememberFw(f) { const rec = LS.get("am_fw_recent", {}); Object.keys(f).forEach(k => { if (f[k]) rec[k] = [f[k], ...(rec[k] || []).filter(x => x !== f[k])].slice(0, 8); }); LS.set("am_fw_recent", rec); LS.set("am_last_fw", f); }
+function renderFw() {
+  if (!S) return; const f = curFw(), n = fwCombos().length;
+  $("bFw").textContent = `🔧 FW  MC1 ${fwShort(f.fw_uc1)} · MC2 ${fwShort(f.fw_uc2)}${n > 1 ? `  (${n} Stände)` : ""}  ✎`;
+}
+$("bFw").onclick = () => {
+  if (RUN) { toast("Bitte zuerst den laufenden Test beenden – die Firmware gilt immer für ganze Läufe."); return; }
+  fillFwLists(); const f = curFw();
+  $("fwUc1").value = f.fw_uc1; $("fwUc2").value = f.fw_uc2; $("fwBl").value = f.bl_uc1; $("fwNote").value = "";
+  $("fwHist").innerHTML = S.fw_history.length > 1 ? "<b>Bisher in dieser Sitzung:</b><br>" + S.fw_history.map(h => `${esc((h.time || "").slice(11, 16))} MC1 ${esc(fwShort(h.fw_uc1))} · MC2 ${esc(fwShort(h.fw_uc2))}${h.note ? " – " + esc(h.note) : ""}`).join("<br>") : "";
+  openSheet("sFw");
+};
+$("fwCancel").onclick = closeSheets;
+$("fwOk").onclick = () => {
+  const nf = { fw_uc1: $("fwUc1").value.trim(), fw_uc2: $("fwUc2").value.trim(), bl_uc1: $("fwBl").value.trim() };
+  if (!nf.fw_uc1 || !nf.fw_uc2) { toast("Bitte für MC1 und MC2 einen Stand eintragen."); return; }
+  const cur = curFw();
+  closeSheets();
+  if (nf.fw_uc1 === cur.fw_uc1 && nf.fw_uc2 === cur.fw_uc2 && nf.bl_uc1 === cur.bl_uc1) return;
+  Object.assign(S.meta, nf);
+  S.fw_history.push(Object.assign({ time: nowIso(), note: $("fwNote").value.trim() }, nf));
+  log("—", "Firmware geändert", `MC1 ${nf.fw_uc1} · MC2 ${nf.fw_uc2} · BL ${nf.bl_uc1}` + ($("fwNote").value.trim() ? " – " + $("fwNote").value.trim() : ""));
+  rememberFw(nf); save(true); renderFw(); vibrate(30);
+  toast(`🔧 Firmware gewechselt: MC1 ${fwShort(nf.fw_uc1)} · MC2 ${fwShort(nf.fw_uc2)} – gilt ab dem nächsten Lauf.`, 5000);
+};
+
 /* ================= Kurzprotokoll ================= */
 function kpHtml(full) {
   const m = S.meta, c = counts(), done = c.ok + c.nok + c.skip;
@@ -1061,6 +1119,7 @@ function kpHtml(full) {
     const td = T(t.id), res = { ok: "OK", nok: "NOK", skip: "übersprungen", partial: "läuft", open: "offen" }[td.status];
     const vals = t.measures.map(sp => { const v = td.runs.map(r => measureValue(r, sp)).filter(x => x != null); return v.length ? `${esc(sp[1])}: ${v.map(f1).join(", ")} s` : ""; }).filter(Boolean);
     const [n, tot] = frequency(t.id); if (n) vals.push(`Fehler ${n} von ${tot}`);
+    if (multiFw()) { const fws = [...new Set(td.runs.filter(r => r.fw).map(r => `${fwShort(r.fw.fw_uc1)}/${fwShort(r.fw.fw_uc2)}`))]; if (fws.length) vals.push("FW " + fws.join(", ")); }
     const nv = td.runs.filter(r => r.video).length;
     const col = res === "OK" ? "#1e9e5a" : res === "NOK" ? "#d92d3a" : "#8a96a8";
     const st = t.steps.length > 90 ? t.steps.slice(0, 87) + " …" : t.steps;
@@ -1073,9 +1132,12 @@ function kpHtml(full) {
   <table><tr><th>Tester</th><td>${esc([m.tester, m.firma].filter(Boolean).join(", "))}</td></tr>
   <tr><th>Beginn</th><td>${esc((m.created || "").replace("T", " "))}</td></tr>
   <tr><th>Ort / Temperatur</th><td>${esc([m.ort, m.temp].filter(Boolean).join(", "))}</td></tr>
-  <tr><th>Firmware</th><td>UC1 ${esc(m.fw_uc1)} · UC2 ${esc(m.fw_uc2)} · BL ${esc(m.bl_uc1)}</td></tr>
+  <tr><th>Firmware MC1 (UC1)</th><td>${esc(fwList("fw_uc1"))}</td></tr>
+  <tr><th>Firmware MC2 (UC2)</th><td>${esc(fwList("fw_uc2"))}</td></tr>
+  <tr><th>Bootloader</th><td>${esc(fwList("bl_uc1"))}</td></tr>
   <tr><th>Seriennummer erfasst</th><td>${esc(m.sn_quelle || "manuell")}</td></tr></table>
   <p><b>${done} von ${REAL.length} Testfällen erledigt – ${c.ok} OK, ${c.nok} NOK, ${c.skip} übersprungen, ${c.open + c.partial} offen.</b><br>Fehlerberichte: A ${ec.A} · B ${ec.B} · C ${ec.C} · D ${ec.D}</p>
+  ${multiFw() ? `<h3 style="margin:10px 0 4px">Firmware-Wechsel während der Sitzung</h3><table><tr><th>Ab</th><th>MC1</th><th>MC2</th><th>BL</th><th>Notiz</th></tr>${S.fw_history.map(h => `<tr><td>${esc((h.time || "").replace("T", " ").slice(0, 16))}</td><td>${esc(h.fw_uc1)}</td><td>${esc(h.fw_uc2)}</td><td>${esc(h.bl_uc1)}</td><td>${esc(h.note || "")}</td></tr>`).join("")}</table>` : ""}
   <h3 style="margin:10px 0 4px">Durchgeführte Tests</h3>
   ${rows ? `<table><tr><th>ID</th><th>Prüfung</th><th>Ergebnis</th><th>Messwerte</th><th>Videos</th></tr>${rows}</table>` : "<p>Noch keine Tests durchgeführt.</p>"}
   ${errs ? `<h3 style="margin:10px 0 4px">Fehlerberichte</h3><table><tr><th>Nr.</th><th>Test</th><th>Klasse</th><th>Beschreibung</th><th>Häufigkeit</th></tr>${errs}</table>` : ""}
@@ -1215,7 +1277,8 @@ $("mQr").onclick = async () => {
 function showWelcome() {
   $("vTest").classList.add("hidden"); $("vWelcome").classList.remove("hidden");
   $("cfgClient").value = CFG.clientId; $("cfgTenant").value = CFG.tenant; $("cfgPath").value = CFG.path; $("redirUri").textContent = REDIRECT;
-  ["nFw1", "nFw2", "nBl"].forEach((id, i) => $(id).value = [TC.fw.fw_uc1, TC.fw.fw_uc2, TC.fw.bl_uc1][i]);
+  { const lf = LS.get("am_last_fw", {}); ["nFw1", "nFw2", "nBl"].forEach((id, i) => { const k = ["fw_uc1", "fw_uc2", "bl_uc1"][i]; $(id).value = lf[k] || TC.fw[k]; }); }
+  fillFwLists();
   const last = LS.get("am_lastmeta", {}); ["nTester", "nFirma", "nOrt", "nLade"].forEach(k => { if (last[k]) $(k).value = last[k]; });
   if (!CFG.clientId) document.querySelector("#loginBox details").open = true;
   if (loggedIn()) {
@@ -1240,6 +1303,7 @@ $("bSaveCfg").onclick = () => { CFG.clientId = $("cfgClient").value.trim(); CFG.
 $("bNew").onclick = async () => {
   const meta = { sn_quelle: NEW_QR_RAW ? "QR-Code" : "manuell", qr_raw: NEW_QR_RAW, sn: $("nSn").value.trim(), tester: $("nTester").value.trim(), firma: $("nFirma").value.trim(), ort: $("nOrt").value.trim(), temp: $("nTemp").value.trim(), ladegeraet: $("nLade").value.trim(), fw_uc1: $("nFw1").value.trim(), fw_uc2: $("nFw2").value.trim(), bl_uc1: $("nBl").value.trim() };
   if (!meta.sn || !meta.tester) { toast("Bitte Seriennummer und Tester eintragen."); return; }
+  rememberFw({ fw_uc1: meta.fw_uc1, fw_uc2: meta.fw_uc2, bl_uc1: meta.bl_uc1 });
   LS.set("am_lastmeta", { nTester: meta.tester, nFirma: meta.firma, nOrt: meta.ort, nLade: meta.ladegeraet });
   $("bNew").disabled = true;
   try { await createSession(meta); enterTest(); } catch (e) { toast("Anlegen fehlgeschlagen: " + e.message, 8000); } finally { $("bNew").disabled = false; }
